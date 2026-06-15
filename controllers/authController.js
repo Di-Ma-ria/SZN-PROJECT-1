@@ -10,6 +10,7 @@ export const register = async (req, res, next) => {
 
     if (error) {
       return res.status(400).json({
+    
         success: false,
         message: "Validation failed",
         errors: error.details.map((err) => err.message),
