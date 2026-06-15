@@ -90,7 +90,7 @@ const userSchema = new mongoose.Schema({
       type: String,
     },
 
-    storeLog: {
+    storeImage: {
       type: String,
       default: null
     },
@@ -150,13 +150,12 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 0
       },
-    
-    isVerifiedSeller: {
+},
+
+isVerifiedSeller: {
     type: Boolean,
     default: false
   },
-
-},
 
   //ADMIN FIELD 
 
@@ -192,22 +191,22 @@ const userSchema = new mongoose.Schema({
   address: {
     street: {
       type: String,
-      //required: true,
+     required: true,
     },
 
     city: {
       type: String,
-     // required: true,
+     required: true,
     },
 
     state: {
       type: String,
-      //required: true,
+      required: true,
     },
 
     country: {
       type: String,
-      //required: true
+      required: true
     },
   },
 
@@ -243,11 +242,11 @@ const userSchema = new mongoose.Schema({
     default: null
   },
 }
-},
+}
+);
 {
   timestamps: true
 }
-);
 
 // HASH PASSWORD WITH BCRYPT BEFORE SAVING
 
@@ -257,7 +256,7 @@ userSchema.pre('save', async function () {
   this.passwordChangedAt = Date.now();
 });
 
-// compare passwords at logim 
+// compare passwords at logim  
 userSchema.methods.comparePassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
