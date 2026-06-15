@@ -7,7 +7,7 @@ export const registerSchema = Joi.object({
     .min(3)
     .max(30)
     .required()
-    .message({
+    .messages({
       'string.min': 'Name must be at least 3 characters',
       'string.max': 'Name cannot exceed 30 characters',
       'any.required': 'Name is required',
@@ -17,7 +17,7 @@ export const registerSchema = Joi.object({
   email: Joi.string()
     .email()
     .required()
-    .message({
+    .messages({
       'string.email': 'please provide a valid email adrress',
       'any.required': 'Email is required',
       'string.empty': 'Email cannot be empty',
@@ -35,7 +35,7 @@ export const registerSchema = Joi.object({
     address: Joi.object({
       street: Joi.string()
         .required()
-        .message({
+        .messages({
           'any.required': 'Street is required', 
           'string.empty': 'Street cannot be empty',   
           }),
@@ -49,8 +49,8 @@ export const registerSchema = Joi.object({
 
       state: Joi.string()
         .required()
-        .message({
-          'any.requested' : 'State is required',
+        .messages({
+          'any.required' : 'State is required',
           'string.empty': 'State cannot be empty',
         }),
 
@@ -63,7 +63,7 @@ export const registerSchema = Joi.object({
       
   })
   .required()
-  .message({
+  .messages({
     'any.required' : 'Address is required,'
   }),
       
@@ -78,7 +78,7 @@ export const loginSchema = Joi.object({
   email: Joi.string ()
     .email()
     .required()
-    .message({
+    .messages({
       'string.email': 'Please provide a valid email address ',
       'any.required': 'Email is required',
       'string.empty': 'Email cannot be empty',
@@ -97,7 +97,7 @@ export const updateProfileSchema = Joi.object({
   name: Joi.string()
     .min(3)
     .max(30)
-    .message({
+    .messages({
       'string.min': 'Name must be least 3 characters',
       'string.max': 'Name cannot exceed 30 character',
       'string.empty': 'Name cannot be empty',
@@ -106,27 +106,27 @@ export const updateProfileSchema = Joi.object({
     address: Joi.object({
       street: Joi.string()
           .required()
-          .message({
+          .messages({
             'any.required': 'Street is required',
             'string.empty': 'Street cannot be empty',
           }),
       city: Joi.string()
           .required()
-          .message({
+          .messages({
             'any.required': 'City is required',
             'string.empty': 'City cannot be empty',
           }),
 
       state: Joi.string()
       .required()
-      .message({
+      .messages({
         'any.required': 'State is required',
         'string.empty': 'State cannot be empty',
       }),
 
       country: Joi.string()
       .required()
-      .message({
+      .messages({
         'any.required': 'Country is required',
         'string.empty': 'Country cannot be empty',
        }),
@@ -135,7 +135,7 @@ export const updateProfileSchema = Joi.object({
 })
 // ONE FEILD MUST BE PROVIDED
   .min(1)
-  .message({
+  .messages({
     'object.min': 'Please provide at least name or address to update',
   });
 
@@ -147,14 +147,14 @@ export const updateProfileSchema = Joi.object({
 export const changePasswordSchema = Joi.object({
   oldPassword: Joi.string()
     .required()
-    .message({
+    .messages({
       'any.required': 'Old password is required',
       'string.empty': 'Old password cannot be empty',
     }),
     newPassword: Joi.string()
       .min(8)
       .required()
-      .message({
+      .messages({
         'string.min': 'New password must be at least 8 characters',
         'any.required': 'New password is required',
         'string.empty': 'New password cannot be empty',
@@ -163,7 +163,7 @@ export const changePasswordSchema = Joi.object({
     confirmPassword: Joi.string()
       .valid(Joi.ref('newPassword'))
       .required()
-      .message({
+      .messages({
         'any.only': 'Password do not match',
         'any.required': 'Please confirm your new password',
         'string.empty': 'Confirm password cannot be empty',
@@ -177,7 +177,7 @@ export const changePasswordSchema = Joi.object({
 export const deleteAccountSchema = Joi.object({
   password: Joi.string()
     .required()
-    .message({
+    .messages({
       'any.required': 'Please enter your password to confirm deletion',
       'string.empty': 'password cannot be empty',
     }),
