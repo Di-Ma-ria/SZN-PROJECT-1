@@ -13,7 +13,8 @@ const seedSuperAdmin = async () => {
     if(!existingSuperAdmin) {
       await User.create({
         name: process.env.SUPERADMIN_NAME, 
-        email: process.env.SUPERADMIN_PASSWORD,
+        email:process.env.SUPERADMIN_EMAIL,
+        password: process.env.SUPERADMIN_PASSWORD,
         phone: process.env.SUPERADMIN_PHONE,
         role: 'superadmin',
         isVerified: true,
