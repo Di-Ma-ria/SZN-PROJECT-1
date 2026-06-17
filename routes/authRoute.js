@@ -1,11 +1,27 @@
 import express from 'express';
-import { logIn, register } from '../controllers/authController.js';
+import { register, logIn, getProfile, updateProfile, changePassword, deleteMyAccount, applyForSeller, applyForAdmin } from '../controllers/authController.js';
+
+import { authMiddleware } from '../middlewares/authMiddleware.js';
 import validate from '../validation/validate.js';
-import { loginSchema, registerSchema } from '../validation/authValidation.js';
+import {registerSchema,loginSchema,updateProfileSchema,changePasswordSchema,deleteAccountSchema,applyForSellerSchema} from '../validation/authValidation.js';
 
-const authRoutes = express.Router()
+const authRoutes = express.Router();
 
-authRoutes.post(`/register`,validate(registerSchema) ,register)
-authRoutes.post(`/login`,validate(loginSchema),logIn)
+// PUBLIC 
 
-export default authRoutes
+authRoutes.post('/register', validate(registerSchema), register);
+authRoutes.post('/login',    validate(loginSchema),    logIn);
+
+// PROTECTED 
+
+authRoutes.get('/me',         authMiddleware, getProfile);
+
+authRoutes.patch('/update',   authMiddleware, validate(updateProfileSchema),  updateProfile);
+authRoutes.patch('/password', authMiddleware, validate(changePasswordSchema), changePassword);
+
+authRoutes.delete('/delete-my-account', authMiddleware, validate(deleteAccountSchema), deleteMyAccount);
+
+authRoutes.post('/apply-seller', authMiddleware, validate(applyForSellerSchema), applyForSeller);
+authRoutes.post('/apply-admin',  authMiddleware, applyForAdmin);
+
+export default authRoutes;
