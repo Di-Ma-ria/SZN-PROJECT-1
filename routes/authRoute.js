@@ -1,7 +1,7 @@
 import express from 'express';
 import { register, logIn, getProfile, updateProfile, changePassword, deleteMyAccount, applyForSeller, applyForAdmin } from '../controllers/authController.js';
 
-import { authMiddleware } from '../middlewares/authMiddleware.js';
+import authMiddleware from '../middlewares/authMiddleware.js';
 import validate from '../validation/validate.js';
 import {registerSchema,loginSchema,updateProfileSchema,changePasswordSchema,deleteAccountSchema,applyForSellerSchema} from '../validation/authValidation.js';
 

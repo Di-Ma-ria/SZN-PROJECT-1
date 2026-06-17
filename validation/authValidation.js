@@ -31,6 +31,11 @@ export const registerSchema = Joi.object({
       'any.required': 'Password is required',
       'string.empty': 'password cannot be empty',
     }),
+
+  phone: Joi.string()
+  .trim()
+  .allow('', null)
+  .optional(),
     
     address: Joi.object({
       street: Joi.string()
@@ -62,9 +67,9 @@ export const registerSchema = Joi.object({
       }),
       
   })
-  .optional()
+  .required()
   .messages({
-    'object.base': 'Address must be an object'
+    'any.required' : 'Address is required,'
   }),
       
 });
@@ -103,7 +108,12 @@ export const updateProfileSchema = Joi.object({
       'string.empty': 'Name cannot be empty',
     }),
 
-    address: Joi.object({
+  phone: Joi.string()
+    .trim()
+    .allow('', null).optional(),
+
+
+  address: Joi.object({
       street: Joi.string()
           .required()
           .messages({
@@ -181,4 +191,63 @@ export const deleteAccountSchema = Joi.object({
       'any.required': 'Please enter your password to confirm deletion',
       'string.empty': 'password cannot be empty',
     }),
+});
+
+// APPLY FOR SELLER 
+
+export const applyForSellerSchema = Joi.object({
+  storeName: Joi.string()
+    .min(3)
+    .max(50)
+    .required()
+    .messages({
+      'string.min':   'Store name must be at least 3 characters',
+      'string.max':   'Store name cannot exceed 50 characters',
+      'any.required': 'Store name is required',
+      'string.empty': 'Store name cannot be empty',
+    }),
+
+  storeDescription: Joi.string()
+    .min(10)
+    .max(500)
+    .required()
+    .messages({
+      'string.min':   'Store description must be at least 10 characters',
+      'string.max':   'Store description cannot exceed 500 characters',
+      'any.required': 'Store description is required',
+      'string.empty': 'Store description cannot be empty',
+    }),
+
+  storeAddress: Joi.object({
+    street:  Joi.string()
+    .required()
+    .messages({ 'any.required': 'Store street is required'}),
+
+    city:    Joi.string()
+    .required()
+    .messages({ 'any.required': 'Store city is required' }),
+
+    state:   Joi.string()
+    .required()
+    .messages({ 'any.required': 'Store state is required'}),
+
+    country: Joi.string()
+    .required()
+    .messages({ 'any.required': 'Store country is required' }),
+
+  })
+  .required().messages({ 'any.required': 'Store address is required'}),
+
+  bankDetails: Joi.object({
+    bankName:      Joi.string()
+    .required()
+    .messages({ 'any.required': 'Bank name is required'}),
+
+
+    accountNumber: Joi.string().required().messages({ 'any.required': 'Account number is required' }),
+
+    accountName:   Joi.string().required().messages({ 'any.required': 'Account name is required' }),
+
+  })
+  .required().messages({ 'any.required': 'Bank details are required' }),
 });
