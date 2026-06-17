@@ -11,14 +11,14 @@ const userRoutes = express.Router()
 userRoutes.get(`/getAllUsers`,adminOnly ,getAllUsers)
 userRoutes.get(`/getAuser`,adminOnly ,getSingleUser)
 userRoutes.get(`/pendingSeller`,authMiddleware,adminOnly ,getPendingSellers)
-userRoutes.patch(`/handleSellerApplication`,validate(handleSellerApplicationSchema),authMiddleware,adminOnly ,handleSellerApplication)
-userRoutes.patch(`/suspendUser`,validate(suspendUserSchema),authMiddleware,adminOnly ,suspendUser)
+userRoutes.patch(`/handleSellerApplication`,authMiddleware,adminOnly, validate(handleSellerApplicationSchema) ,handleSellerApplication)
+userRoutes.patch(`/suspendUser`,authMiddleware,adminOnly ,validate(suspendUserSchema),suspendUser)
 userRoutes.patch(`/unsuspendUser`,authMiddleware,adminOnly ,unsuspendUser)
 userRoutes.patch(`/demoteAdmin`,authMiddleware,superAdminOnly ,demoteAdmin)
 userRoutes.delete(`/deleteUser`,authMiddleware,adminOnly ,deleteUser)
 userRoutes.patch(`/makeAdmin`,authMiddleware, adminOnly ,makeAdmin)
 userRoutes.get(`/pendingAdmin`,authMiddleware,superAdminOnly ,getPendingAdmins)
-userRoutes.patch(`/handleAdminApplication`,validate(handleAdminApplicationSchema),authMiddleware,superAdminOnly ,handleAdminApplication)
+userRoutes.patch(`/handleAdminApplication`,authMiddleware,superAdminOnly, validate(handleAdminApplicationSchema) ,handleAdminApplication)
 
 
 
