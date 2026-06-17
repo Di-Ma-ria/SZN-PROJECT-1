@@ -1,6 +1,6 @@
 import {User} from "../models/userModel.js";
 
-import generateToken from '../utils/generateToken.js';
+import generateToken from "../utlis/generateToken.js";
 
 // REGISTER
 
