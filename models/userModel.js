@@ -98,22 +98,22 @@ const userSchema = new mongoose.Schema({
     storeAddress: {
     street: {
       type: String,
-      required: true,
+      //required: true,
     },
 
     city: {
       type: String,
-      required: true,
+      //required: true,
     },
 
     state: {
       type: String,
-      required: true,
+      //required: true,
     },
 
     country: {
       type: String,
-      required: true
+      //required: true
     },
   },
 
@@ -188,27 +188,27 @@ isVerifiedSeller: {
   },
 
 // ALL ROLES ADDRESS
-  address: {
-    street: {
-      type: String,
-     required: true,
-    },
+  // address: {
+  //   street: {
+  //     type: String,
+  //    required: true,
+  //   },
 
-    city: {
-      type: String,
-     required: true,
-    },
+  //   city: {
+  //     type: String,
+  //    required: true,
+  //   },
 
-    state: {
-      type: String,
-      required: true,
-    },
+  //   state: {
+  //     type: String,
+  //     required: true,
+  //   },
 
-    country: {
-      type: String,
-      required: true
-    },
-  },
+  //   country: {
+  //     type: String,
+  //     required: true
+  //   },
+  // },
 
   // SECURITY
 
@@ -252,13 +252,13 @@ isVerifiedSeller: {
 
 userSchema.pre('save', async function () {
   if(!this.isModified('password')) return;
-  this.password = await  bcrypt.hash(this.password, 12);
+  this.password = await  bcryptjs.hash(this.password, 12);
   this.passwordChangedAt = Date.now();
 });
 
 // compare passwords at logim  
 userSchema.methods.comparePassword = async function(enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+  return await bcryptjs.compare(enteredPassword, this.password);
 };
 
 // checks if acccount is locked

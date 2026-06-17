@@ -1,23 +1,10 @@
 import {User} from "../models/userModel.js";
 import generateToken from '../utlis/generateToken.js'
-// REGISTER
+//REGISTER
 export const register = async (req, res, next) => {
   try {
-    // validate request body
-    const { error, value } = registerSchema.validate(req.body, {
-      abortEarly: false,
-    });
 
-    if (error) {
-      return res.status(400).json({
-    
-        success: false,
-        message: "Validation failed",
-        errors: error.details.map((err) => err.message),
-      });
-    }
-
-    const { name, email, password, phone } = value;
+    const { name, email, password, phone } = req.body;
 
     // check if email is already taken
     const existingUser = await User.findOne({ email });
@@ -37,7 +24,7 @@ export const register = async (req, res, next) => {
       role: "customer",
     });
 
-    const token = generateToken({ id: user._id, role: user.role });
+    const token = await generateToken({ id: user._id, role: user.role });
 
     return res.status(201).json({
       success: true,
@@ -58,20 +45,8 @@ export const register = async (req, res, next) => {
 // LOGIN
 export const logIn = async (req, res, next) => {
   try {
-    // validate request body
-    const { error, value } = loginSchema.validate(req.body, {
-      abortEarly: false,
-    });
 
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: error.details.map((err) => err.message),
-      });
-    }
-
-    const { email, password } = value;
+    const { email, password } = req.body;
 
     // fetch user and include password 
     const user = await User.findOne({ email }).select("+password");
@@ -123,7 +98,7 @@ export const logIn = async (req, res, next) => {
     // password correct 
     await user.resetLoginAttempts();
 
-    const token = generateToken({ id: user._id, role: user.role });
+    const token = await generateToken({ id: user._id, role: user.role });
 
     return res.status(200).json({
       success: true,

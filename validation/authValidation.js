@@ -62,9 +62,9 @@ export const registerSchema = Joi.object({
       }),
       
   })
-  .required()
+  .optional()
   .messages({
-    'any.required' : 'Address is required,'
+    'object.base': 'Address must be an object'
   }),
       
 });
