@@ -2,7 +2,7 @@ import Joi from 'joi';
 
 //THIS HANDLES SELLER APPLICATION
 
-export const handleSellerApplication = Joi.object({
+export const handleSellerApplicationSchema = Joi.object({
   action: Joi.string()
     .valid('approve', 'reject')
     .required()
