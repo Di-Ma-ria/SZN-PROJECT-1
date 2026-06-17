@@ -5,6 +5,7 @@ import cors from 'cors';
 import ConnectDb from './config/db.js';
 import {errorHandler} from './middlewares/errorHandler.js';
 import authRoutes from './routes/authRoute.js';
+import userRoutes from './routes/userRoute.js';
 
 
 dotenv.config();
@@ -19,6 +20,7 @@ app.use(cors());
 
 //ROUTES
 app.use(`/auth`, authRoutes)
+app.use(`/user`, userRoutes)
 
 app.get('/',(req, res) => {
   res.json({message: "your api is running"});

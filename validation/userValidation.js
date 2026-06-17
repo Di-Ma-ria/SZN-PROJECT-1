@@ -6,7 +6,7 @@ export const handleSellerApplicationSchema = Joi.object({
   action: Joi.string()
     .valid('approve', 'reject')
     .required()
-    .message({
+    .messages({
       'any.only': "Action must be either 'approve' or 'reject'",
       'any.required': 'Action is required',
       'string.empty': 'Action cannot be empty',
@@ -30,7 +30,7 @@ export const handleAdminApplicationSchema = Joi.object({
   action: Joi.string()
     .valid('approve', 'reject')
       .required()
-      .message({
+      .messages({
         'any.only': "action must be either 'approve' or 'reject' ",
         'any.required': 'Action is required',
         'string.empty': 'Action cannot be empty',
@@ -39,7 +39,7 @@ export const handleAdminApplicationSchema = Joi.object({
       reason: Joi.string()
       .when('action', {
         is: 'reject',
-        then: Joi.required().message({
+        then: Joi.required().messages({
           'any.required': 'Please provide a reason for rejection',
           'string.empty': 'Rejection reason cannot be empty',
         }),
