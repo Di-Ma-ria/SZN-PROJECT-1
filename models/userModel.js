@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 import bcryptjs from 'bcryptjs';
 
-const userSchema = new mongoose.Schema({
+const userSchema = new mongoose.Schema(
+  {
 
   // INFO 
   name: {
@@ -21,12 +22,14 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
-    minlength:8
+    minlength:8,
+    select: false,
   },
 
   phone: {
     type: String,
-    trim: true
+    trim: true,
+    default: null
   },
 
 
@@ -41,7 +44,33 @@ const userSchema = new mongoose.Schema({
     default: 'customer'
   },
 
-  //ALL ROLE STATUS 
+
+
+// // ALL ROLES ADDRESS
+  address: {
+    street: {
+      type: String,
+     required: true,
+    },
+
+    city: {
+      type: String,
+     required: true,
+    },
+
+    state: {
+      type: String,
+      required: true,
+    },
+
+    country: {
+      type: String,
+      required: true
+    },
+  },
+
+
+  //ALL ROLE ACCOUNT STATUS 
 
   isVerified: {
     type: Boolean,
@@ -76,11 +105,16 @@ const userSchema = new mongoose.Schema({
     default: 'none'
   },
 
-   sellerRejectionReason: {
+  sellerRejectionReason: {
       type: String,
       default: null
     },
-
+  
+  isVerifiedSeller: {
+    type: Boolean,
+    default: false
+  },
+  
   sellerProfile: {
     storeName: {
       type: String,
@@ -96,26 +130,28 @@ const userSchema = new mongoose.Schema({
     },
 
     storeAddress: {
-    street: {
+      street: {
       type: String,
-      required: true,
+      //required: true,
     },
 
-    city: {
+      city: {
       type: String,
-      required: true,
+      //required: true,
     },
 
-    state: {
+      state: {
       type: String,
-      required: true,
+      //required: true,
     },
 
-    country: {
+     country: {
       type: String,
-      required: true
+      //required: true
+    },
     },
   },
+
 
     bankDetails: {
       bankName: {
@@ -152,10 +188,7 @@ const userSchema = new mongoose.Schema({
       },
 },
 
-isVerifiedSeller: {
-    type: Boolean,
-    default: false
-  },
+
 
   //ADMIN FIELD 
 
@@ -185,29 +218,6 @@ isVerifiedSeller: {
   totalSpent: {
     type: Number,
     default: 0
-  },
-
-// ALL ROLES ADDRESS
-  address: {
-    street: {
-      type: String,
-     required: true,
-    },
-
-    city: {
-      type: String,
-     required: true,
-    },
-
-    state: {
-      type: String,
-      required: true,
-    },
-
-    country: {
-      type: String,
-      required: true
-    },
   },
 
   // SECURITY
@@ -240,25 +250,22 @@ isVerifiedSeller: {
   lockUntil: {
     type: Date,
     default: null
+    },
   },
-}
-}
+  {timestamps: true}
 );
-{
-  timestamps: true
-}
-
 // HASH PASSWORD WITH BCRYPT BEFORE SAVING
 
 userSchema.pre('save', async function () {
   if(!this.isModified('password')) return;
-  this.password = await  bcrypt.hash(this.password, 12);
+
+  this.password = await  bcryptjs.hash(this.password, 12);
   this.passwordChangedAt = Date.now();
 });
 
 // compare passwords at logim  
 userSchema.methods.comparePassword = async function(enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+  return await bcryptjs.compare(enteredPassword, this.password);
 };
 
 // checks if acccount is locked
@@ -270,6 +277,7 @@ userSchema.methods.isLocked = function()
 // increment login attempts
 
  userSchema.methods.incrementLoginAttempts = async function() {
+  this.loginAttempts += 1;
   if (this.loginAttempts >= 5) {
     this.lockUntil = Date.now() + 2 * 60 * 60 * 1000;
   }

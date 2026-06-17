@@ -1,25 +1,15 @@
 import {User} from "../models/userModel.js";
-import generateToken from '../utlis/generateToken.js'
+
+import generateToken from '../utils/generateToken.js';
+
 // REGISTER
+
 export const register = async (req, res, next) => {
+  
   try {
-    // validate request body
-    const { error, value } = registerSchema.validate(req.body, {
-      abortEarly: false,
-    });
 
-    if (error) {
-      return res.status(400).json({
-    
-        success: false,
-        message: "Validation failed",
-        errors: error.details.map((err) => err.message),
-      });
-    }
+  const { name, email, password, phone,address } = req.body;
 
-    const { name, email, password, phone } = value;
-
-    // check if email is already taken
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
@@ -33,6 +23,7 @@ export const register = async (req, res, next) => {
       name,
       email,
       password,
+      address,
       phone: phone || null,
       role: "customer",
     });
@@ -48,6 +39,7 @@ export const register = async (req, res, next) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        address: user.address,
       },
     });
   } catch (error) {
@@ -56,78 +48,47 @@ export const register = async (req, res, next) => {
 };
 
 // LOGIN
+
 export const logIn = async (req, res, next) => {
-  try {
-    // validate request body
-    const { error, value } = loginSchema.validate(req.body, {
-      abortEarly: false,
-    });
-
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: error.details.map((err) => err.message),
-      });
-    }
-
-    const { email, password } = value;
-
-    // fetch user and include password 
-    const user = await User.findOne({ email }).select("+password");
-
-    if (!user) {
+  try{
+    const user = await User.findOne({ email}).select('+password');
+    if(!user) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password",
+        message: 'invalid email or password',
       });
     }
 
-    // check if account is suspended
-    if (user.isSuspended) {
+    if(user.isDeleted) {
       return res.status(403).json({
         success: false,
-        message: `Your account has been suspended. Reason: ${user.suspensionReason || "Contact support for details"}`,
+        message: `Your account has been suspended. Reason: ${
+          user.suspensionReason || ' Contact support for details'
+        }`,
       });
     }
 
-    // check if account is  deleted
-    if (user.isDeleted) {
-      return res.status(403).json({
+    if(user.isLocked()) {
+      return res.status (423).json({
         success: false,
-        message: "This account no longer exists",
+        message: 'Account temporarily locked due to too many failed attempts.Try again in 2 hours',
       });
     }
-
-    // check if account is locked from too many failed attempts
-    if (user.isLocked()) {
-      return res.status(423).json({
-        success: false,
-        message: "Your account is temporarily locked due to too many failed login attempts. Try again in 2 hours",
-      });
-    }
-
-    // compare password
     const isMatch = await user.comparePassword(password);
-
-    if (!isMatch) {
-      // increment failed attempts before responding
+    if(!isMatch) {
       await user.incrementLoginAttempts();
-
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password",
+        message: 'Invalid email or password',
       });
     }
 
-    // password correct 
     await user.resetLoginAttempts();
-
-    const token = generateToken({ id: user._id, role: user.role });
+    const token = generateToken({ id: user._id, role: user.role});
 
     return res.status(200).json({
-      success: true,
-      message: "Login successful",
+      success:true,
+      message: 'Login successful',
       token,
       user: {
         id: user._id,
@@ -136,6 +97,183 @@ export const logIn = async (req, res, next) => {
         role: user.role,
         sellerStatus: user.sellerStatus,
       },
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+//GET MY PROFILE
+
+export const getProfile = async (req, res, next) => {
+  try{
+    const user = await User.findById(req.user.id).select(
+      '-password -passwordRestToken -passwordResetExpires -loginAttempts -lockUntil'
+    );
+
+    if(!user || user.isDeleted) {
+      return res.status(404).json({
+        success: false, message: 'User noot found'
+      });
+    }
+
+    return res.json({success: true, user});
+  } catch(error) {
+    next(error);
+  }
+};
+
+// UPDATE PROFILE 
+
+export const updateProfile = async (req, res, next ) => {
+  try{
+    const { name, phone, address} = res.body;
+
+    const user = await User.findById(req.user.id);
+    if(!user || user.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if(name) user.name =name;
+    if(phone) user.phone = phone;
+    if(address) user.address = address;
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        address: user.address,
+        role: user.role,
+      },
+    });
+  } catch (error){
+    next (error);
+  }
+};
+
+
+// CHANGE PASSWORD 
+
+export const changePassword = async (req, res, next) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const isMatch = await user.comparePassword(oldPassword);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Old password is incorrect' });
+    }
+
+    user.password = newPassword; // pre-save hook will hash it
+    await user.save();
+
+    return res.json({ success: true, message: 'Password changed successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//DELETE MY ACCOUNT 
+
+export const deleteMyAccount = async (req, res, next) => {
+  try {
+    const { password } = req.body;
+
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Incorrect password' });
+    }
+
+    // soft delete — blocks login but preserves data
+    user.isDeleted = true;
+    user.deletedAt = Date.now();
+    await user.save();
+
+    return res.json({ success: true, message: 'Your account has been deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//APPLY FOR SELLER 
+
+export const applyForSeller = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (user.role === 'seller' || user.sellerStatus === 'approved') {
+      return res.status(400).json({ success: false, message: 'You are already an approved seller' });
+    }
+
+    if (user.sellerStatus === 'pending') {
+      return res.status(400).json({ success: false, message: 'Your seller application is already pending review' });
+    }
+
+    const { storeName, storeDescription, storeAddress, bankDetails } = req.body;
+
+    user.sellerStatus                   = 'pending';
+    user.sellerProfile.storeName        = storeName;
+    user.sellerProfile.storeDescription = storeDescription;
+    user.sellerProfile.storeAddress     = storeAddress;
+    user.sellerProfile.bankDetails      = bankDetails;
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: 'Seller application submitted successfully. Pending admin review',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// APPLY FOR ADMIN 
+
+export const applyForAdmin = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (['admin', 'superadmin'].includes(user.role)) {
+      return res.status(400).json({ success: false, message: 'You are already an admin' });
+    }
+
+    if (user.adminStatus === 'pending') {
+      return res.status(400).json({ success: false, message: 'Your admin application is already pending review' });
+    }
+
+    user.adminStatus = 'pending';
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: 'Admin application submitted successfully. Pending superadmin review',
     });
   } catch (error) {
     next(error);
