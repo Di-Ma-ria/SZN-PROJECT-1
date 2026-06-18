@@ -1,25 +1,50 @@
+// routes/userRoute.js
 import express from 'express';
-import { deleteUser, demoteAdmin, getAllUsers, getPendingAdmins, getPendingSellers, getSingleUser, handleAdminApplication, handleSellerApplication, makeAdmin, suspendUser, unsuspendUser } from '../controllers/userController.js';
+import {
+  getAllUsers, getSingleUser,
+  getPendingSellers, handleSellerApplication,
+  getPendingAdmins, handleAdminApplication,
+  suspendUser, unsuspendUser,
+  makeAdmin, demoteAdmin, deleteUser,
+} from '../controllers/userController.js';
+
+import { authMiddleware } from '../middlewares/authMiddleware.js';
+
+import { isAdmin, isSuperAdmin } from '../middlewares/adminMiddleware.js';
+
 import validate from '../validation/validate.js';
-import { handleAdminApplicationSchema,handleSellerApplicationSchema, suspendUserSchema } from '../validation/userValidation.js';
-import authMiddleware from '../middlewares/authMiddleware.js';
-import { adminOnly, superAdminOnly } from '../middlewares/adminMiddleware.js';
+
+import {
+  handleSellerApplicationSchema,
+  handleAdminApplicationSchema,
+  suspendUserSchema,
+} from '../validation/userValidation.js';
 
 
+const userRoutes = express.Router();
 
-const userRoutes = express.Router()
-userRoutes.get(`/getAllUsers`,adminOnly ,getAllUsers)
-userRoutes.get(`/getAuser`,adminOnly ,getSingleUser)
-userRoutes.get(`/pendingSeller`,authMiddleware,adminOnly ,getPendingSellers)
-userRoutes.patch(`/handleSellerApplication`,authMiddleware,adminOnly, validate(handleSellerApplicationSchema) ,handleSellerApplication)
-userRoutes.patch(`/suspendUser`,authMiddleware,adminOnly ,validate(suspendUserSchema),suspendUser)
-userRoutes.patch(`/unsuspendUser`,authMiddleware,adminOnly ,unsuspendUser)
-userRoutes.patch(`/demoteAdmin`,authMiddleware,superAdminOnly ,demoteAdmin)
-userRoutes.delete(`/deleteUser`,authMiddleware,adminOnly ,deleteUser)
-userRoutes.patch(`/makeAdmin`,authMiddleware, adminOnly ,makeAdmin)
-userRoutes.get(`/pendingAdmin`,authMiddleware,superAdminOnly ,getPendingAdmins)
-userRoutes.patch(`/handleAdminApplication`,authMiddleware,superAdminOnly, validate(handleAdminApplicationSchema) ,handleAdminApplication)
+// admin routes
+userRoutes.get('/all', authMiddleware, isAdmin, getAllUsers);
 
+userRoutes.get('/pending-sellers', authMiddleware, isAdmin, getPendingSellers);
 
+userRoutes.patch('/handle-seller/:id', authMiddleware, isAdmin, validate(handleSellerApplicationSchema), handleSellerApplication);
 
-export default userRoutes
+userRoutes.patch('/suspend/:id', authMiddleware, isAdmin, validate(suspendUserSchema), suspendUser);
+
+userRoutes.patch('/unsuspend/:id', authMiddleware, isAdmin, unsuspendUser);
+
+userRoutes.get('/:id', authMiddleware, isAdmin, getSingleUser);
+
+userRoutes.delete('/delete/:id', authMiddleware, isAdmin, deleteUser);
+
+// superadmin routes
+userRoutes.get('/pending-admins', authMiddleware, isSuperAdmin, getPendingAdmins);
+
+userRoutes.patch('/handle-admin/:id', authMiddleware, isSuperAdmin, validate(handleAdminApplicationSchema), handleAdminApplication);
+
+userRoutes.patch('/make-admin/:id', authMiddleware, isSuperAdmin, makeAdmin);
+
+userRoutes.patch('/demote-admin/:id', authMiddleware, isSuperAdmin, demoteAdmin);
+
+export default userRoutes;
