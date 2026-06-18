@@ -1,36 +1,53 @@
 import jwt from 'jsonwebtoken';
 import { User } from '../models/userModel.js';
 
-
-const authMiddleware = async(req, res, next)=>{
-try{
+const authMiddleware = async (req, res, next) => {
+  try {
     const authHeader = req.headers.authorization || req.headers.Authorization;
-    if(!authHeader || !authHeader.startsWith('Bearer')){
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
-            success:false,
-            message:"token not provided"
-        });
+        success: false,
+        message: 'Token not provided',
+      });
     }
 
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select("-password")
 
-    if(!user) return res.status(401).json({
-        success:false,
-        message:"Unauthorized"
-    })
+    const user = await User.findById(decoded.id).select('-password');
 
-    req.user= user;
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized',
+      });
+    }
+
+    if (user.isDeleted) {
+      return res.status(403).json({
+        success: false,
+        message: 'This account has been deleted',
+      });
+    }
+
+    if (user.isSuspended) {
+      return res.status(403).json({
+        success: false,
+        message: user.suspensionReason
+          ? `This account is suspended: ${user.suspensionReason}`
+          : 'This account is suspended',
+      });
+    }
+
+    req.user = user;
     next();
-}catch(error){
-     res.status(401).json({
-        success:false,
-        message:"Invalid or expired token"
-    })
-
-}
-
-}
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid or expired token',
+    });
+  }
+};
 
 export default authMiddleware;

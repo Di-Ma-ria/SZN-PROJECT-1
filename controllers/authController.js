@@ -8,7 +8,7 @@ export const register = async (req, res, next) => {
   
   try {
 
-  const { name, email, password, phone,address } = req.body;
+  const { name, email, password, phone } = req.body;
 
     const existingUser = await User.findOne({ email });
 
@@ -23,7 +23,6 @@ export const register = async (req, res, next) => {
       name,
       email,
       password,
-      address,
       phone: phone || null,
       role: "customer",
     });
@@ -38,8 +37,7 @@ export const register = async (req, res, next) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role,
-        address: user.address,
+        role: user.role
       },
     });
   } catch (error) {
@@ -51,6 +49,8 @@ export const register = async (req, res, next) => {
 
 export const logIn = async (req, res, next) => {
   try{
+    const {email, password}=req.body
+
     const user = await User.findOne({ email}).select('+password');
     if(!user) {
       return res.status(401).json({
@@ -129,7 +129,7 @@ export const getProfile = async (req, res, next) => {
 
 export const updateProfile = async (req, res, next ) => {
   try{
-    const { name, phone, address} = res.body;
+    const { name, phone, address} = req.body;
 
     const user = await User.findById(req.user.id);
     if(!user || user.isDeleted) {
