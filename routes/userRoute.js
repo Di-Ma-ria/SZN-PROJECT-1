@@ -8,7 +8,7 @@ import {
   makeAdmin, demoteAdmin, deleteUser,
 } from '../controllers/userController.js';
 
-import { authMiddleware } from '../middlewares/authMiddleware.js';
+import authMiddleware from '../middlewares/authMiddleware.js';
 
 import { isAdmin, isSuperAdmin } from '../middlewares/adminMiddleware.js';
 
