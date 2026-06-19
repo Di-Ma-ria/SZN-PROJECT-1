@@ -29,6 +29,25 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // address: {
+    //   street: {
+    //     type: String,
+    //     trim: true,
+    //   },
+    //   city: {
+    //     type: String,
+    //     trim: true,
+    //   },
+    //   state: {
+    //     type: String,
+    //     trim: true,
+    //   },
+    //   country: {
+    //     type: String,
+    //     trim: true,
+    //   },
+    // },
+
     profileImage: {
       type: String,
       default: null,

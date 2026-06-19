@@ -8,7 +8,7 @@ export const register = async (req, res, next) => {
   
   try {
 
-  const { name, email, password, phone } = req.body;
+  const { name, email, password, phone, } = req.body;
 
     const existingUser = await User.findOne({ email });
 
@@ -110,12 +110,13 @@ export const logIn = async (req, res, next) => {
 export const getProfile = async (req, res, next) => {
   try{
     const user = await User.findById(req.user.id).select(
-      '-password -passwordRestToken -passwordResetExpires -loginAttempts -lockUntil'
+      '-password -passwordResetToken -passwordResetExpires -loginAttempts -lockUntil'
     );
 
     if(!user || user.isDeleted) {
       return res.status(404).json({
-        success: false, message: 'User noot found'
+        success: false,
+        message: 'User not found'
       });
     }
 
