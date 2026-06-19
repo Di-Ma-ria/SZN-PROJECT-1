@@ -17,11 +17,13 @@ authRoutes.post('/login',    validate(loginSchema),    logIn);
 authRoutes.get('/me',         authMiddleware, getProfile);
 
 authRoutes.patch('/update',   authMiddleware, validate(updateProfileSchema),  updateProfile);
+
 authRoutes.patch('/password', authMiddleware, validate(changePasswordSchema), changePassword);
 
 authRoutes.delete('/delete-my-account', authMiddleware, validate(deleteAccountSchema), deleteMyAccount);
 
 authRoutes.post('/apply-seller', authMiddleware, validate(applyForSellerSchema), applyForSeller);
+
 authRoutes.post('/apply-admin',  authMiddleware, applyForAdmin);
 
 export default authRoutes;

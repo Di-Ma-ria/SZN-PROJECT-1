@@ -3,9 +3,13 @@ import {User} from '../models/userModel.js';
 
 export const getAllUsers = async (req, res, next) => {
   try{
-    const {role, isSuspended,search, page =1, limit =10} = req.query;
+    const {role, isSuspended, search} =req.query;
+    const  page = Number(req.query.page) || 1; 
+    const limit = Number(req.query.limit) || 10; 
 
-    const filter = {isDeleted: false};
+    const filter = {isDeleted: false,
+      role:{$ne: 'superadmin'}
+    };
 
     if(role) filter.role = role;
     if(isSuspended !== undefined)

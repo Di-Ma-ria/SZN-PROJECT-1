@@ -28,7 +28,7 @@ export const register = async (req, res, next) => {
       role: "customer",
     });
 
-    const token = generateToken({ id: user._id, role: user.role });
+    const token = await generateToken({ id: user._id, role: user.role });
 
     return res.status(201).json({
       success: true,
@@ -50,7 +50,10 @@ export const register = async (req, res, next) => {
 // LOGIN
 
 export const logIn = async (req, res, next) => {
+
   try{
+    const { email, password } = req.body;
+
     const user = await User.findOne({ email}).select('+password');
     if(!user) {
       return res.status(401).json({
@@ -62,11 +65,18 @@ export const logIn = async (req, res, next) => {
     if(user.isDeleted) {
       return res.status(403).json({
         success: false,
-        message: `Your account has been suspended. Reason: ${
-          user.suspensionReason || ' Contact support for details'
-        }`,
+        message: 'This account no longer exists'
       });
     }
+
+    if (user.isSuspended) {
+  return res.status(403).json({
+    success: false,
+    message: `Your account has been suspended. Reason: ${
+      user.suspensionReason || 'Contact support for details'
+    }`,
+  });
+}
 
     if(user.isLocked()) {
       return res.status (423).json({
@@ -84,7 +94,7 @@ export const logIn = async (req, res, next) => {
     }
 
     await user.resetLoginAttempts();
-    const token = generateToken({ id: user._id, role: user.role});
+    const token = await generateToken({ id: user._id, role: user.role});
 
     return res.status(200).json({
       success:true,
@@ -110,7 +120,7 @@ export const logIn = async (req, res, next) => {
 export const getProfile = async (req, res, next) => {
   try{
     const user = await User.findById(req.user.id).select(
-      '-password -passwordRestToken -passwordResetExpires -loginAttempts -lockUntil'
+      '-password -passwordResetToken -passwordResetExpires -loginAttempts -lockUntil'
     );
 
     if(!user || user.isDeleted) {
@@ -129,7 +139,7 @@ export const getProfile = async (req, res, next) => {
 
 export const updateProfile = async (req, res, next ) => {
   try{
-    const { name, phone, address} = res.body;
+    const { name, phone, address} = req.body;
 
     const user = await User.findById(req.user.id);
     if(!user || user.isDeleted) {

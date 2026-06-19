@@ -28,6 +28,13 @@ userRoutes.get('/all', authMiddleware, isAdmin, getAllUsers);
 
 userRoutes.get('/pending-sellers', authMiddleware, isAdmin, getPendingSellers);
 
+
+// superadmin routes
+userRoutes.get('/pending-admins', authMiddleware, isSuperAdmin, getPendingAdmins);
+
+//admin route
+
+
 userRoutes.patch('/handle-seller/:id', authMiddleware, isAdmin, validate(handleSellerApplicationSchema), handleSellerApplication);
 
 userRoutes.patch('/suspend/:id', authMiddleware, isAdmin, validate(suspendUserSchema), suspendUser);
@@ -39,7 +46,6 @@ userRoutes.get('/:id', authMiddleware, isAdmin, getSingleUser);
 userRoutes.delete('/delete/:id', authMiddleware, isAdmin, deleteUser);
 
 // superadmin routes
-userRoutes.get('/pending-admins', authMiddleware, isSuperAdmin, getPendingAdmins);
 
 userRoutes.patch('/handle-admin/:id', authMiddleware, isSuperAdmin, validate(handleAdminApplicationSchema), handleAdminApplication);
 
