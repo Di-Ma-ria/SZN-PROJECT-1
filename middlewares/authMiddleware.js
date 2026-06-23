@@ -24,6 +24,11 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
+    //Token version check - rejects tokens issued before last logout
+    if(decoded.tokenVersion !==user.tokenVersion) {
+      return res.status(401).json({success:false, message:"session expired. Please login again"})
+    }
+
     if (user.isDeleted) {
       return res.status(403).json({
         success: false,

@@ -7,6 +7,8 @@ import { errorHandler } from './middlewares/errorHandler.js';
 import authRoutes from './routes/authRoute.js';
 import userRoutes from './routes/userRoute.js';
 import ProductRoutes from './routes/productRoute.js';
+import ReviewRoutes from './routes/reviewRoute.js';
+import WishlistRoutes from './routes/wishlistRoute.js';
 
 dotenv.config();
 
@@ -23,6 +25,8 @@ app.use(cors());
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 app.use('/products', ProductRoutes);
+app.use('/reviews', ReviewRoutes);
+app.use('/wishlist', WishlistRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Your API is running' });

@@ -1,9 +1,9 @@
 import express from 'express';
-import { register, logIn, getProfile, updateProfile, changePassword, deleteMyAccount, applyForSeller, applyForAdmin } from '../controllers/authController.js';
+import { register, logIn, getProfile, updateProfile, changePassword, deleteMyAccount, applyForSeller, applyForAdmin, logOUt, forgotPassword } from '../controllers/authController.js';
 
 import authMiddleware from '../middlewares/authMiddleware.js';
 import validate from '../validation/validate.js';
-import {registerSchema,loginSchema,updateProfileSchema,changePasswordSchema,deleteAccountSchema,applyForSellerSchema} from '../validation/authValidation.js';
+import {registerSchema,loginSchema,updateProfileSchema,changePasswordSchema,deleteAccountSchema,applyForSellerSchema, forgotPasswordSchema} from '../validation/authValidation.js';
 
 const authRoutes = express.Router();
 
@@ -23,5 +23,7 @@ authRoutes.delete('/delete-my-account', authMiddleware, validate(deleteAccountSc
 
 authRoutes.post('/apply-seller', authMiddleware, validate(applyForSellerSchema), applyForSeller);
 authRoutes.post('/apply-admin',  authMiddleware, applyForAdmin);
+authRoutes.post(`/logout`, authMiddleware, logOUt)
+authRoutes.post(`/forgot-password`, validate(forgotPasswordSchema), forgotPassword)
 
 export default authRoutes;

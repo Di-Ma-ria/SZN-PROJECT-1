@@ -251,3 +251,34 @@ export const applyForSellerSchema = Joi.object({
   })
   .required().messages({ 'any.required': 'Bank details are required' }),
 });
+
+export const forgotPasswordSchema =Joi.object({
+  email:Joi.string()
+  .email()
+  .required()
+  .messages({
+    'string.email':'please provide a valid email address',
+    'any.required':'Email is required',
+    'string empty':'Email cannot be empty',
+  }),
+});
+
+export const resetPasswordSchema = Joi.object({
+  newPassword:Joi.string()
+  .min(8)
+  .required()
+  .messages({
+    'string.min':'Password must be at least 8 character',
+    'any.required':'New password is required',
+    'string.empty':'New password cannot be empty',
+  }),
+
+  confirmPassword:Joi.string()
+  .valid(Joi.ref('newPassword'))
+  .required()
+  .messages({
+    'any.only':'Passwords do not match',
+    'any.required':'Please confirm your new password',
+    'string.empty':'Comfirm password cannot be empty',
+  }),
+});

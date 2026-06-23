@@ -11,8 +11,9 @@ const variantSchema =Joi.object({
 export const createProductSchema = Joi.object({
     name:Joi.string().required(),
     description:Joi.string().required(),
-    category:Joi.string().required(),
+    category:Joi.string().hex().length(24).required(),
     brand:Joi.string().required(),
+    productType:Joi.string().valid('own', 'marketplace').required(),
 
     variants: Joi.array().items(variantSchema).default([]),
 
@@ -30,8 +31,9 @@ export const createProductSchema = Joi.object({
 export const updateProductSchema = Joi.object({
     name:Joi.string(),
     description:Joi.string(),
-    category:Joi.string(),
+    category:Joi.string().hex().length(24),
     brand:Joi.string(),
+    productType:Joi.string().valid('own', 'marketplace'),
     variants:Joi.array().items(variantSchema),
     basePrice:Joi.number().min(0),
     stock:Joi.number().min(0),
@@ -47,4 +49,8 @@ export const updateStatusSchema = Joi.object({
         then: Joi.required(),  //admin must give a reason when rejecting
         otherwise: Joi.optional()
     }),
+});
+
+export const updateStockSchema = Joi.object({
+    stock:Joi.number().min(0).required()
 });

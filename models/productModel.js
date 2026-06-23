@@ -10,6 +10,8 @@ const variantSchema = new mongoose.Schema({
     sku:{
         type:String,
         required:true,
+        lowercase:true,
+        index:true,
     },
     price:{
         type:Number,
@@ -42,7 +44,8 @@ const productSchema = new mongoose.Schema({
         required:true,
     },
     category:{
-        type:String,
+        type:Schema.Types.ObjectId,
+        ref:'Category',
         required:true,
     },
     brand:{
@@ -57,7 +60,7 @@ const productSchema = new mongoose.Schema({
 
     productType:{
         type:String,
-        enum:['Own', 'Marketplace'],
+        enum:['own', 'marketplace'],
         required:true,
     },
 
@@ -97,6 +100,16 @@ const productSchema = new mongoose.Schema({
         of:String,
     },     //{RAM: "8gb", Battery:"5000mAh"}
 
+    isFeatured:{
+        type:Boolean,
+        default:false,
+    },
+    discountPercentage:{
+        type:Number,
+        default:0,
+        min:0,
+        max:100,
+    },
     ratings:{
         average:{
             type:Number,
@@ -110,21 +123,66 @@ const productSchema = new mongoose.Schema({
 },{timestamps:true
 });
 
-//auto-generate slug from name before saving
-productSchema.pre('save', function(next) {
-    if(this.isModified('name')) {
-        this.slug = slugify(this.name, {lower:true, strict:true});
-    }
-    next();
+productSchema.index({
+    name:'text',
+    description:'text',
+    brand:'text'
 });
 
-//auto-generate slug on update too
-productSchema.pre('findOneAndUpdate', function(next) {
-    const update = this.getUpdate();
-    if(update.name) {
-        update.slug = slugify(update.name, {lower:true, strict:true});
+//auto-generate slug from name before saving
+// productSchema.pre('save', function(next) {
+//     if(this.isModified('name')) {
+//         this.slug = slugify(this.name, {lower:true, strict:true});
+//     }
+//     next();
+// });
+
+// //auto-generate slug on update too
+// productSchema.pre('findOneAndUpdate', function(next) {
+//     const update = this.getUpdate();
+//     if(update.name) {
+//         update.slug = slugify(update.name, {lower:true, strict:true});
+//     }
+//     next();
+// });
+//  Auto-generate slug with duplicate handling on save
+productSchema.pre('save', async function(next) {
+  if (!this.isModified('name')) return next();
+
+  let baseSlug = slugify(this.name, { lower: true, strict: true });
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (await mongoose.model('Product').findOne({
+    slug,
+    _id: { $ne: this._id }
+  })) {
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+
+  this.slug = slug;
+  next();
+});
+
+// Auto-generate slug with duplicate handling on update
+productSchema.pre('findOneAndUpdate', async function(next) {
+  const update = this.getUpdate();
+  if (update.name) {
+    let baseSlug = slugify(update.name, { lower: true, strict: true });
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (await mongoose.model('Product').findOne({
+      slug,
+      _id: { $ne: this.getQuery()._id }
+    })) {
+      slug = `${baseSlug}-${counter}`;
+      counter++;
     }
-    next();
+    update.slug = slug;
+  }
+  next();
 });
 
 export const Product = mongoose.model('Product', productSchema);

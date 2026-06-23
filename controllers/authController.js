@@ -1,5 +1,5 @@
 import {User} from "../models/userModel.js";
-
+import crypto from 'crypto';
 import generateToken from "../utlis/generateToken.js";
 
 // REGISTER
@@ -84,7 +84,7 @@ export const logIn = async (req, res, next) => {
     }
 
     await user.resetLoginAttempts();
-    const token = generateToken({ id: user._id, role: user.role});
+    const token = await generateToken({ id: user._id, role: user.role, tokenVersion: user.tokenVersion});
 
     return res.status(200).json({
       success:true,
@@ -280,3 +280,52 @@ export const applyForAdmin = async (req, res, next) => {
     next(error);
   }
 };
+
+//LOGOUT -invalidates all tokens issued before this moment
+export const logOUt = async(req, res, next)=>{
+  try{
+    await User.findByIdAndDelete(req.user.id, {$inc:{tokenVersion:1} });
+    return res.json({success:true, message:"Logged out successfully"})
+  }catch(error){
+      next(error);
+  }
+}
+
+//FORGOT PASSWORD -generates a reset token and (eventually) emails it
+export const forgotPassword = async(req,res,next)=>{
+  try{
+    const {email}=req.body;
+
+    const user = await User.findOne({email});
+    //always return 200 - dont reveal whether the email exists 
+    if(!user) {
+      return res.status(200).json({
+        success:true,
+        message:"if an account with that email exists, a reset link has been sent",
+      });
+    }
+
+  //Generate a raw token and a hashed version to store
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+  user.passwordResetToken =hashedToken;
+  user.passwordResetExpires = Date.now() + 15 * 60 * 1000; //15 minutes
+  await user.save({validateBeforeSave:false});
+
+  //  TODO: replace this with nodemailer once email is set up
+  //const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${rawToken}`;
+  //await sendEmail({to: user.email, subject:'Password Reset', html:`...`});
+
+  //TEMPORARY : return token directly so you can test via postman
+  return res.status(200).json({
+    success:true,
+    message:'Password reset token generated',
+    resetToken: rawToken, //remove this line once email is set up
+  });
+  }catch(error){
+     next(error);
+  }
+};
+
+//Reset password
