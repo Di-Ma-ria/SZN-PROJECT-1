@@ -1,6 +1,16 @@
 import {User} from "../models/userModel.js";
-import crypto from 'crypto';
-import generateToken from "../utlis/generateToken.js";
+
+import {OTP} from '../models/otpModel.js';
+
+import generateToken from '../utils/generateToken.js';
+
+import{sendTemplateEmail} from '../utils/sendEmail.js';
+
+
+// to generate 6 digit otp
+
+const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+
 
 // REGISTER
 
@@ -8,7 +18,7 @@ export const register = async (req, res, next) => {
   
   try {
 
-  const { name, email, password, phone, } = req.body;
+  const { name, email, password, phone,address } = req.body;
 
     const existingUser = await User.findOne({ email });
 
@@ -23,21 +33,48 @@ export const register = async (req, res, next) => {
       name,
       email,
       password,
+      address,
       phone: phone || null,
       role: "customer",
     });
 
-    const token = generateToken({ id: user._id, role: user.role });
+
+    // send a welcome email
+
+    await sendTemplateEmail(user.email, 'welcome', {name: user.name});
+
+// send otp for email verification automatically
+
+    const otp = generateOtp();
+    await OTP.deleteMany({email, purpose: 'email-verification'});
+    await OTP.create({
+      email,
+      otp,
+      purpose: 'email-verification',
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    });
+
+    await sendTemplateEmail(email, 'otp', {
+      name: user.name,
+      otp,
+      purpose: 'email-verification',
+    });
+
+    const token = await generateToken({
+      id: user._id,
+      role: user.role
+    });
 
     return res.status(201).json({
       success: true,
-      message: "Account created successfully",
+      message: "Account created successfully, please check your email to verify your account.",
       token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        address: user.address,
       },
     });
   } catch (error) {
@@ -48,8 +85,9 @@ export const register = async (req, res, next) => {
 // LOGIN
 
 export const logIn = async (req, res, next) => {
+
   try{
-    const {email, password}=req.body
+    const { email, password } = req.body;
 
     const user = await User.findOne({ email}).select('+password');
     if(!user) {
@@ -62,11 +100,18 @@ export const logIn = async (req, res, next) => {
     if(user.isDeleted) {
       return res.status(403).json({
         success: false,
-        message: `Your account has been suspended. Reason: ${
-          user.suspensionReason || ' Contact support for details'
-        }`,
+        message: 'This account no longer exists'
       });
     }
+
+    if (user.isSuspended) {
+  return res.status(403).json({
+    success: false,
+    message: `Your account has been suspended. Reason: ${
+      user.suspensionReason || 'Contact support for details'
+    }`,
+  });
+}
 
     if(user.isLocked()) {
       return res.status (423).json({
@@ -84,7 +129,10 @@ export const logIn = async (req, res, next) => {
     }
 
     await user.resetLoginAttempts();
-    const token = await generateToken({ id: user._id, role: user.role, tokenVersion: user.tokenVersion});
+    const token = await generateToken({ 
+      id: user._id,
+       role: user.role
+      });
 
     return res.status(200).json({
       success:true,
@@ -95,6 +143,7 @@ export const logIn = async (req, res, next) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        isVerified: user.isVerified,
         sellerStatus: user.sellerStatus,
       },
     });
@@ -115,8 +164,7 @@ export const getProfile = async (req, res, next) => {
 
     if(!user || user.isDeleted) {
       return res.status(404).json({
-        success: false,
-        message: 'User not found'
+        success: false, message: 'User noot found'
       });
     }
 
@@ -216,6 +264,178 @@ export const deleteMyAccount = async (req, res, next) => {
   }
 };
 
+
+//Send Otp..... used for email-verification and password-reset
+
+export const sendOtp = async (req, res, next) => {
+  try{
+    const { email, purpose } = req.body;
+
+    const user = await User.findOne({ email, isDeleted: false });
+    if(!user) {
+      return res.status(404).json({
+        success: false, 
+        message: 'No account found with this email'
+      });
+    }
+
+    //delete any existing otp for this email + purpose
+
+    await OTP.deleteMany({ email, purpose});
+
+    const otp = generateOtp();
+    await OTP.create({
+      email,
+      otp,
+      purpose,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+    });
+
+
+    await sendTemplateEmail(email, 'otp', {name: user.name, otp, purpose });
+
+    return res.json({
+      success: true,
+      message: `OTP sent to ${email}.it expires in 10 minutes.`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//verify otp
+export const verifyOtp = async (req, res, next) => {
+  try{
+    const { email, otp, purpose } = req.body;
+
+    const record = await OTP.findOne({email, purpose, verified: false });
+
+    if(!record) {
+      return res.status(400).json({
+        success: false,
+        message: 'OTP not found or already used'
+      });
+    }
+
+    if(new Date() > record.expiresAt) {
+      await record.deleteOne();
+      return res.status(400).json({
+        success: false,
+        message: 'OTP has expired, request a new one.'
+      });
+    }
+
+    const isMatch = await record.compareOtp(otp);
+    if(!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid OTP'
+      });
+    }
+
+    //mark as verified
+    record.verified = true;
+    await record.save();
+
+    //if verifying email- mark user as verified
+
+    if(purpose === 'email-verification') {
+      await User.findOneAndUpdate({ email}, {isVerified: true });
+    }
+
+
+    return res.json({success: true,
+      message: 'OTP verified successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//resend otp
+
+export const resendOtp = async (req, res, next) => {
+  return sendOtp(req, res, next);
+};
+
+// Forgot password
+export const forgotPassword = async (req, res, next) => {
+  try{
+    const { email } = req.body;
+
+    const user = await User.findOne({email, isDeleted: false });
+    if(!user) {
+      return res.json({
+        success: true,
+        message: 'If an account with email exists, an OTP has been sent.',
+      });
+    }
+
+    await OTP.deleteMany({email, purpose: 'password-reset'});
+
+    const otp = generateOtp();
+    await OTP.create({
+      email,
+      otp,
+      purpose: 'password-reset',
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    });
+
+    await sendTemplateEmail(email, 'otp', {name: user.name, otp, purpose: 'password-reset'});
+
+    return res.json({
+      success: true,
+      message: 'If an account with this email exists, an OTP has been sent.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+//reset password, user enters OTP + new password
+export const resetPassword = async (req, res, next) => {
+  try{
+    const { email, otp, newPassword } = req.body;
+
+    // check OTP was verified
+    const record = await OTP.findOne({
+      email, 
+      purpose: 'password-reset',
+      verified: true,
+    });
+
+    if(!record) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please verify your OTP first before resetting your password',
+      });
+    }
+
+    const user = await user.findOne({ email, isDeleted: false}).select('+password');
+    if(!user){
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    user.password = newPassword; // pre-save hook hashes it
+    await user.save();
+
+    //Delete used OTP record
+    await record.deleteOne();
+
+    return res.json({
+      success: true,
+      message: 'Password reset successfully. Please log in.'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 //APPLY FOR SELLER 
 
 export const applyForSeller = async (req, res, next) => {
@@ -280,7 +500,6 @@ export const applyForAdmin = async (req, res, next) => {
     next(error);
   }
 };
-
 //LOGOUT -invalidates all tokens issued before this moment
 export const logOUt = async(req, res, next)=>{
   try{
@@ -290,42 +509,3 @@ export const logOUt = async(req, res, next)=>{
       next(error);
   }
 }
-
-//FORGOT PASSWORD -generates a reset token and (eventually) emails it
-export const forgotPassword = async(req,res,next)=>{
-  try{
-    const {email}=req.body;
-
-    const user = await User.findOne({email});
-    //always return 200 - dont reveal whether the email exists 
-    if(!user) {
-      return res.status(200).json({
-        success:true,
-        message:"if an account with that email exists, a reset link has been sent",
-      });
-    }
-
-  //Generate a raw token and a hashed version to store
-  const rawToken = crypto.randomBytes(32).toString('hex');
-  const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
-
-  user.passwordResetToken =hashedToken;
-  user.passwordResetExpires = Date.now() + 15 * 60 * 1000; //15 minutes
-  await user.save({validateBeforeSave:false});
-
-  //  TODO: replace this with nodemailer once email is set up
-  //const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${rawToken}`;
-  //await sendEmail({to: user.email, subject:'Password Reset', html:`...`});
-
-  //TEMPORARY : return token directly so you can test via postman
-  return res.status(200).json({
-    success:true,
-    message:'Password reset token generated',
-    resetToken: rawToken, //remove this line once email is set up
-  });
-  }catch(error){
-     next(error);
-  }
-};
-
-//Reset password
