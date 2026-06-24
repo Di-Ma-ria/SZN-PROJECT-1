@@ -149,3 +149,77 @@ export const getLowStockAlerts = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getLowStockProducts = async (req, res) => {
+  try {
+    const { threshold = 10, limit = 50 } = req.query;
+
+    const products = await Product.find({
+      status: 'active',
+      stock: { $lte: Number(threshold) },
+    })
+      .populate('seller', 'name email')
+      .populate('category', 'name slug')
+      .sort({ stock: 1 })
+      .limit(Number(limit));
+
+    res.status(200).json({
+      success: true,
+      data: products,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Update stock for base product (no variants)
+export const updateStock = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+
+    const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
+    const isOwner = product.seller.toString() === req.user._id.toString();
+
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    const updated = await Product.findByIdAndUpdate(
+      req.params.id,
+      { stock: req.body.stock },
+      { new: true }
+    );
+
+    res.status(200).json({ success: true, data: updated });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Update stock for a specific variant
+export const updateVariantStock = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+
+    const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
+    const isOwner = product.seller.toString() === req.user._id.toString();
+
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    const variant = product.variants.find(
+      (v) => v._id.toString() === req.params.variantId
+    );
+    if (!variant) return res.status(404).json({ success: false, message: 'Variant not found' });
+
+    variant.stock = req.body.stock;
+    await product.save();
+
+    res.status(200).json({ success: true, data: product });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};

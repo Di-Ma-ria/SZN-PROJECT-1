@@ -6,7 +6,7 @@ import {Coupon} from '../models/couponModel.js';
 
 import {User} from '../models/userModel.js';
 
-import{sendTemplateEmail} from '../utils/Email.js';
+import { sendTemplateEmail } from '../utils/sendEmail.js';
 
 
 // internal: deduct inventory

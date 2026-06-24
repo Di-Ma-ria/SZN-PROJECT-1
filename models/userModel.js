@@ -1,35 +1,7 @@
 import mongoose from 'mongoose';
 import bcryptjs from 'bcryptjs';
 
-const userSchema = new mongoose.Schema(
-  {
-<<<<<<< HEAD
-    // INFO
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-    },
-
-    password: {
-      type: String,
-      required: true,
-      minlength: 8,
-    },
-
-    phone: {
-      type: String,
-      trim: true,
-=======
-
+const userSchema = new mongoose.Schema({
   // INFO 
   name: {
     type: String,
@@ -48,7 +20,7 @@ const userSchema = new mongoose.Schema(
   password: {
     type: String,
     required: true,
-    minlength:8,
+    minlength: 8,
     select: false,
   },
 
@@ -57,7 +29,6 @@ const userSchema = new mongoose.Schema(
     trim: true,
     default: null
   },
-
 
   profileImage: {
     type: String,
@@ -70,38 +41,27 @@ const userSchema = new mongoose.Schema(
     default: 'customer'
   },
 
-
-
-// // ALL ROLES ADDRESS
+  // ALL ROLES ADDRESS
   address: {
     street: {
       type: String,
-    // required: true,
       trim: true,
     },
-
     city: {
       type: String,
-     //required: true,
       trim: true,
     },
-
     state: {
       type: String,
-      //required: true,
       trim: true,
     },
-
     country: {
       type: String,
-     // required: true
       trim: true,
     },
   },
 
-
-  //ALL ROLE ACCOUNT STATUS 
-
+  // ALL ROLE ACCOUNT STATUS 
   isVerified: {
     type: Boolean,
     default: false
@@ -127,18 +87,17 @@ const userSchema = new mongoose.Schema(
     default: null
   },
 
-// SELLER FIELDS 
-
+  // SELLER FIELDS 
   sellerStatus: {
     type: String,
-    enum: ['none', 'pending','approved', 'rejected'],
+    enum: ['none', 'pending', 'approved', 'rejected'],
     default: 'none'
   },
 
   sellerRejectionReason: {
-      type: String,
-      default: null
-    },
+    type: String,
+    default: null
+  },
   
   isVerifiedSeller: {
     type: Boolean,
@@ -153,251 +112,39 @@ const userSchema = new mongoose.Schema(
     storeDescription: {
       type: String,
     },
-
     storeImage: {
       type: String,
       default: null
     },
-
     storeAddress: {
-      street: {
-      type: String,
-      //required: true,
+      street: { type: String },
+      city: { type: String },
+      state: { type: String },
+      country: { type: String },
     },
-
-      city: {
-      type: String,
-      //required: true,
-    },
-
-      state: {
-      type: String,
-      //required: true,
-    },
-
-     country: {
-      type: String,
-      //required: true
-    },
->>>>>>> c1d0e81077efade1d33dd1923dbbc9b31fa58387
-    },
-
-<<<<<<< HEAD
-    // address: {
-    //   street: {
-    //     type: String,
-    //     trim: true,
-    //   },
-    //   city: {
-    //     type: String,
-    //     trim: true,
-    //   },
-    //   state: {
-    //     type: String,
-    //     trim: true,
-    //   },
-    //   country: {
-    //     type: String,
-    //     trim: true,
-    //   },
-    // },
-
-    profileImage: {
-      type: String,
-      default: null,
-    },
-
-    role: {
-      type: String,
-      enum: ['customer', 'seller', 'admin', 'superadmin'],
-      default: 'customer',
-    },
-
-    // ALL ROLE STATUS
-    isVerified: {
-      type: Boolean,
-      default: false,
-    },
-
-    isSuspended: {
-      type: Boolean,
-      default: false,
-    },
-
-    suspensionReason: {
-      type: String,
-      default: null,
-    },
-
-    isDeleted: {
-      type: Boolean,
-      default: false,
-    },
-
-    deletedAt: {
-      type: Date,
-      default: null,
-    },
-
-    // SELLER FIELDS
-    sellerStatus: {
-      type: String,
-      enum: ['none', 'pending', 'approved', 'rejected'],
-      default: 'none',
-    },
-
-    sellerRejectionReason: {
-      type: String,
-      default: null,
-    },
-
-    sellerProfile: {
-      storeName: {
-=======
-
     bankDetails: {
-      bankName: {
->>>>>>> c1d0e81077efade1d33dd1923dbbc9b31fa58387
-        type: String,
-        trim: true,
-      },
-      storeDescription: {
-        type: String,
-      },
-      storeImage: {
-        type: String,
-        default: null,
-      },
-      storeAddress: {
-        street: {
-          type: String,
-        },
-        city: {
-          type: String,
-        },
-        state: {
-          type: String,
-        },
-        country: {
-          type: String,
-        },
-      },
-      bankDetails: {
-        bankName: {
-          type: String,
-        },
-        accountNumber: {
-          type: String,
-        },
-        accountName: {
-          type: String,
-        },
-      },
-      totalSales: {
-        type: Number,
-        default: 0,
-      },
-      totalRevenue: {
-        type: Number,
-        default: 0,
-      },
-      rating: {
-        average: {
-          type: Number,
-          default: 0,
-        },
-        count: {
-          type: Number,
-          default: 0,
-        },
-      },
-      isVerifiedSeller: {
-        type: Boolean,
-        default: false,
-      },
-<<<<<<< HEAD
+      bankName: { type: String, trim: true },
+      accountNumber: { type: String },
+      accountName: { type: String },
     },
-
-    // ADMIN FIELDS
-    adminStatus: {
-      type: String,
-      enum: ['none', 'pending', 'approved', 'rejected'],
-      default: 'none',
-    },
-
-    adminRejectionReason: {
-      type: String,
-      default: null,
-    },
-
-    // CUSTOMER
-    wishlist: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Product',
-      },
-    ],
-
-    totalOrders: {
+    totalSales: {
       type: Number,
       default: 0,
     },
-
-    totalSpent: {
+    totalRevenue: {
       type: Number,
       default: 0,
     },
+    rating: {
+      average: { type: Number, default: 0 },
+      count: { type: Number, default: 0 },
+    }
+  }, // <-- This closing brace was missing
 
-    // SECURITY
-    passwordChangedAt: {
-      type: Date,
-      default: null,
-    },
-
-    passwordResetToken: {
-      type: String,
-      default: null,
-    },
-
-    passwordResetExpires: {
-      type: Date,
-      default: null,
-    },
-
-    lastLogin: {
-      type: Date,
-      default: null,
-    },
-
-    loginAttempts: {
-      type: Number,
-      default: 0,
-    },
-
-    lockUntil: {
-      type: Date,
-      default: null,
-    },
-    tokenVersion:{
-      type:Number,
-      default:0
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
-
-=======
-},
-
-
-
-  //ADMIN FIELD 
-
+  // ADMIN FIELD 
   adminStatus: {
     type: String,
-    enum:['none', 'pending',  'approved', 'rejected'],
+    enum: ['none', 'pending', 'approved', 'rejected'],
     default: 'none'
   },
 
@@ -406,8 +153,7 @@ const userSchema = new mongoose.Schema(
     default: null
   },
 
-
-  //CUSTOMER 
+  // CUSTOMER 
   wishlist: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product'
@@ -424,7 +170,6 @@ const userSchema = new mongoose.Schema(
   },
 
   // SECURITY
-
   passwordChangedAt: {
     type: Date,
     default: null
@@ -453,31 +198,18 @@ const userSchema = new mongoose.Schema(
   lockUntil: {
     type: Date,
     default: null
-    },
   },
-  {timestamps: true}
-);
->>>>>>> c1d0e81077efade1d33dd1923dbbc9b31fa58387
+}, { timestamps: true });
+
 // HASH PASSWORD WITH BCRYPT BEFORE SAVING
 userSchema.pre('save', async function () {
-<<<<<<< HEAD
   if (!this.isModified('password')) return;
   this.password = await bcryptjs.hash(this.password, 12);
   this.passwordChangedAt = Date.now();
 });
 
-// compare passwords at login
-userSchema.methods.comparePassword = async function (enteredPassword) {
-=======
-  if(!this.isModified('password')) return;
-
-  this.password = await  bcryptjs.hash(this.password, 12);
-  this.passwordChangedAt = Date.now();
-});
-
-// compare passwords at logim  
+// compare passwords at login  
 userSchema.methods.comparePassword = async function(enteredPassword) {
->>>>>>> c1d0e81077efade1d33dd1923dbbc9b31fa58387
   return await bcryptjs.compare(enteredPassword, this.password);
 };
 
@@ -487,17 +219,11 @@ userSchema.methods.isLocked = function () {
 };
 
 // increment login attempts
-<<<<<<< HEAD
-userSchema.methods.incrementLoginAttempts = async function () {
-=======
-
- userSchema.methods.incrementLoginAttempts = async function() {
+userSchema.methods.incrementLoginAttempts = async function() {
   this.loginAttempts += 1;
->>>>>>> c1d0e81077efade1d33dd1923dbbc9b31fa58387
   if (this.loginAttempts >= 5) {
     this.lockUntil = Date.now() + 2 * 60 * 60 * 1000;
   }
-  this.loginAttempts += 1;
   await this.save();
 };
 

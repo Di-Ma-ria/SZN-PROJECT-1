@@ -1,5 +1,5 @@
 import express from 'express';
-import authMiddleware from '../middlewares/authMiddleware.js';
+import { authMiddleware } from '../middlewares/authMiddleware.js';
 import {
   addReview,
   getProductReviews,
@@ -7,11 +7,11 @@ import {
   deleteReview,
 } from '../controllers/reviewController.js';
 
-const ReviewRoutes = express.Router();
+const reviewRoutes = express.Router();
 
-ReviewRoutes.get('/product/:productId', getProductReviews);
-ReviewRoutes.post('/product/:productId', authMiddleware, addReview);
-ReviewRoutes.put('/:reviewId', authMiddleware, updateReview);
-ReviewRoutes.delete('/:reviewId', authMiddleware, deleteReview);
+reviewRoutes.get('/product/:productId', getProductReviews);
+reviewRoutes.post('/product/:productId', authMiddleware, addReview);
+reviewRoutes.put('/:reviewId', authMiddleware, updateReview);
+reviewRoutes.delete('/:reviewId', authMiddleware, deleteReview);
 
-export default ReviewRoutes;
+export default reviewRoutes;

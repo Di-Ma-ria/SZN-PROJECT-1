@@ -51,6 +51,3 @@ export const updateStatusSchema = Joi.object({
     }),
 });
 
-export const updateStockSchema = Joi.object({
-    stock:Joi.number().min(0).required()
-});
