@@ -3,7 +3,9 @@ import { User } from '../models/userModel.js';
 
 export const authMiddleware = async (req, res, next) => {
   try {
-    // ── 1. Pull token from Authorization header ──────────────────
+
+    // Pull token from Authorization header 
+    
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -15,7 +17,8 @@ export const authMiddleware = async (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
 
-    // ── 2. Verify token ──────────────────────────────────────────
+    // Verify token
+     
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -28,7 +31,8 @@ export const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ success: false, message });
     }
 
-    // ── 3. Check user still exists ───────────────────────────────
+    // Check user still exists
+
     const user = await User.findById(decoded.id).select(
       '-password -passwordResetToken -passwordResetExpires -loginAttempts -lockUntil'
     );
@@ -40,7 +44,8 @@ export const authMiddleware = async (req, res, next) => {
       });
     }
 
-    // ── 4. Check account is not suspended ────────────────────────
+    // Check account is not suspended 
+
     if (user.isSuspended) {
       return res.status(403).json({
         success: false,
@@ -50,7 +55,8 @@ export const authMiddleware = async (req, res, next) => {
       });
     }
 
-    // ── 5. Check password hasn't changed after token was issued ──
+    //Check password hasn't changed after token was issued 
+
     if (user.passwordChangedAt) {
       const passwordChangedTime = Math.floor(
         user.passwordChangedAt.getTime() / 1000
@@ -63,7 +69,7 @@ export const authMiddleware = async (req, res, next) => {
       }
     }
 
-    // ── 6. Attach user to request ────────────────────────────────
+    // ── 6. Attach user to request 
     req.user = user;
     next();
   } catch (error) {
