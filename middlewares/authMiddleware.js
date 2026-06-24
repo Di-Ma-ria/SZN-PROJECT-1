@@ -1,58 +1,78 @@
 import jwt from 'jsonwebtoken';
 import { User } from '../models/userModel.js';
 
-const authMiddleware = async (req, res, next) => {
+export const authMiddleware = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization || req.headers.Authorization;
+
+    // Pull token from Authorization header 
+    
+    const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
-        message: 'Token not provided',
+        message: 'Access denied. No token provided',
       });
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await User.findById(decoded.id).select('-password');
+    // Verify token
+     
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      const message =
+        err.name === 'TokenExpiredError'
+          ? 'Session expired. Please log in again'
+          : 'Invalid token. Please log in again';
 
-    if (!user) {
+      return res.status(401).json({ success: false, message });
+    }
+
+    // Check user still exists
+
+    const user = await User.findById(decoded.id).select(
+      '-password -passwordResetToken -passwordResetExpires -loginAttempts -lockUntil'
+    );
+
+    if (!user || user.isDeleted) {
       return res.status(401).json({
         success: false,
-        message: 'Unauthorized',
+        message: 'User no longer exists',
       });
     }
 
-    //Token version check - rejects tokens issued before last logout
-    if(decoded.tokenVersion !==user.tokenVersion) {
-      return res.status(401).json({success:false, message:"session expired. Please login again"})
-    }
-
-    if (user.isDeleted) {
-      return res.status(403).json({
-        success: false,
-        message: 'This account has been deleted',
-      });
-    }
+    // Check account is not suspended 
 
     if (user.isSuspended) {
       return res.status(403).json({
         success: false,
-        message: user.suspensionReason
-          ? `This account is suspended: ${user.suspensionReason}`
-          : 'This account is suspended',
+        message: `Your account has been suspended. Reason: ${
+          user.suspensionReason || 'Contact support for details'
+        }`,
       });
     }
 
+    //Check password hasn't changed after token was issued 
+
+    if (user.passwordChangedAt) {
+      const passwordChangedTime = Math.floor(
+        user.passwordChangedAt.getTime() / 1000
+      );
+      if (decoded.iat < passwordChangedTime) {
+        return res.status(401).json({
+          success: false,
+          message: 'Password was recently changed. Please log in again',
+        });
+      }
+    }
+
+    // ── 6. Attach user to request 
     req.user = user;
     next();
   } catch (error) {
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid or expired token',
-    });
+    next(error);
   }
 };
-
-export default authMiddleware;
