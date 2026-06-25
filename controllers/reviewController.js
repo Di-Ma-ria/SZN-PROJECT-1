@@ -25,7 +25,7 @@ const updateProductRating = async (productId) => {
   });
 };
 
-export const addReview = async (req, res) => {
+export const addReview = async (req, res, next) => {
   try {
     const { productId } = req.params;
     const { rating, comment } = req.body;
@@ -51,11 +51,11 @@ export const addReview = async (req, res) => {
 
     res.status(201).json({ success: true, data: review });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const getProductReviews = async (req, res) => {
+export const getProductReviews = async (req, res, next) => {
   try {
     const reviews = await Review.find({ product: req.params.productId, isApproved: true })
       .populate('user', 'name profileImage')
@@ -63,11 +63,11 @@ export const getProductReviews = async (req, res) => {
 
     res.status(200).json({ success: true, data: reviews });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const updateReview = async (req, res) => {
+export const updateReview = async (req, res, next) => {
   try {
     const review = await Review.findById(req.params.reviewId);
     if (!review) {
@@ -86,11 +86,11 @@ export const updateReview = async (req, res) => {
 
     res.status(200).json({ success: true, data: review });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+   next(error);
   }
 };
 
-export const deleteReview = async (req, res) => {
+export const deleteReview = async (req, res, next) => {
   try {
     const review = await Review.findById(req.params.reviewId);
     if (!review) {
@@ -106,6 +106,6 @@ export const deleteReview = async (req, res) => {
 
     res.status(200).json({ success: true, message: 'Review deleted successfully' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };

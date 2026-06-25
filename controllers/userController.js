@@ -121,7 +121,7 @@ export const handleSellerApplication = async (req, res, next) => {
 
       return res.json({
         success: true,
-        message: `${user.name} this user is now an approved seller`,
+        message: `${user.name} is now an approved seller`,
       });
     }
 

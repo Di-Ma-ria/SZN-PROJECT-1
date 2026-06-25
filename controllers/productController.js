@@ -4,7 +4,7 @@ import cloudinary from '../config/couldinary.js';
 
 
 //PUBLIC ENDPOINTS (No Auth Required)
-export const searchProducts = async (req, res) => {
+export const searchProducts = async (req, res, next) => {
   try {
     const {
       q,
@@ -71,12 +71,12 @@ export const searchProducts = async (req, res) => {
       pages: Math.ceil(total / Number(limit)),
       data: products,
     });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (error) {
+    next(error);
   }
 };
 
-export const getSearchSuggestions = async (req, res) => {
+export const getSearchSuggestions = async (req, res, next) => {
   try {
     const query = req.query.q || '';
     if (!query.trim()) {
@@ -98,7 +98,7 @@ export const getSearchSuggestions = async (req, res) => {
 
     res.status(200).json({ success: true, data: suggestions });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
@@ -182,7 +182,7 @@ export const getSingleProduct = async (req, res, next) => {
 };
 
 //GET PRODUCTS BY CATEGORY
-export const getProductsByCategory = async (req, res) => {
+export const getProductsByCategory = async (req, res, next) => {
   try {
     const { page = 1, limit = 20, sort = 'newest' } = req.query;
 
@@ -232,12 +232,12 @@ export const getProductsByCategory = async (req, res) => {
       pages: Math.ceil(total / Number(limit)),
       data: products,
     });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (error) {
+    next(error);
   }
 };
 
-export const getProductsByCategorySlug = async (req, res) => {
+export const getProductsByCategorySlug = async (req, res, next) => {
   try {
     const { page = 1, limit = 20, sort = 'newest' } = req.query;
 
@@ -279,15 +279,15 @@ export const getProductsByCategorySlug = async (req, res) => {
       pages: Math.ceil(total / Number(limit)),
       data: products,
     });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (error) {
+   next(error);
   }
 };
 
 
 
 // Get featured products
-export const getFeaturedProducts = async (req, res) => {
+export const getFeaturedProducts = async (req, res, next) => {
   try {
     const { limit = 10 } = req.query;
 
@@ -298,13 +298,13 @@ export const getFeaturedProducts = async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, data: products });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 // Get new arrivals
-export const getNewArrivals = async (req, res) => {
+export const getNewArrivals = async (req, res, next) => {
   try {
     const { limit = 10 } = req.query;
 
@@ -315,13 +315,13 @@ export const getNewArrivals = async (req, res) => {
       .limit(Number(limit));
 
     res.status(200).json({ success: true, data: products });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (error) {
+   next(error)
   }
 };
 
 // Get deals — products with a discount percentage set
-export const getDeals = async (req, res) => {
+export const getDeals = async (req, res, next) => {
   try {
     const { limit = 10 } = req.query;
 
@@ -335,13 +335,13 @@ export const getDeals = async (req, res) => {
       .limit(Number(limit));
 
     res.status(200).json({ success: true, data: products });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 // Get related products — same category, excluding current product
-export const getRelatedProducts = async (req, res) => {
+export const getRelatedProducts = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
@@ -357,13 +357,13 @@ export const getRelatedProducts = async (req, res) => {
       .sort({ 'ratings.average': -1 }); // show best rated first
 
     res.status(200).json({ success: true, data: related });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 // Get products by brand
-export const getProductsByBrand = async (req, res) => {
+export const getProductsByBrand = async (req, res, next) => {
   try {
     const { page = 1, limit = 20, sort = 'newest' } = req.query;
 
@@ -397,12 +397,12 @@ export const getProductsByBrand = async (req, res) => {
       pages: Math.ceil(total / Number(limit)),
       data: products,
     });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (error) {
+    next(error);
   }
 };
 
-export const compareProducts = async (req, res) => {
+export const compareProducts = async (req, res, next) => {
   try {
     const { productIds } = req.body;
 
@@ -426,7 +426,7 @@ export const compareProducts = async (req, res) => {
 
     res.status(200).json({ success: true, data: products });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
@@ -471,7 +471,7 @@ export const getMyProducts = async (req, res, next) => {
 };
 
 // Get seller's product status
-export const getMyProductStats = async (req, res) => {
+export const getMyProductStats = async (req, res, next) => {
   try {
     const sellerId = req.user._id;
 
@@ -488,12 +488,12 @@ export const getMyProductStats = async (req, res) => {
       success: true,
       data: { total, active, pending, rejected, archived, draft },
     });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (error) {
+    next(error);
   }
 };
 
-export const getProductAnalytics = async (req, res) => {
+export const getProductAnalytics = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) {
@@ -512,7 +512,7 @@ export const getProductAnalytics = async (req, res) => {
 
     res.status(200).json({ success: true, data: analytics });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
@@ -568,7 +568,7 @@ export const updateProduct = async (req, res, next) => {
 };
 
 // Add more images to an existing product
-export const addProductImages = async (req, res) => {
+export const addProductImages = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
@@ -591,13 +591,13 @@ export const addProductImages = async (req, res) => {
     );
 
     res.status(200).json({ success: true, data: updated });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 // Remove a specific image from a product
-export const removeProductImage = async (req, res) => {
+export const removeProductImage = async (req, res, next) => {
   try {
     const { imageUrl } = req.body;
     if (!imageUrl) return res.status(400).json({ success: false, message: 'imageUrl is required' });
@@ -636,8 +636,8 @@ export const removeProductImage = async (req, res) => {
     );
 
     res.status(200).json({ success: true, data: updated });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (error) {
+   next(error);
   }
 };
 
@@ -710,7 +710,7 @@ export const adminGetAllProducts = async (req, res, next) => {
 };
 
 // Get all pending products awaiting approval
-export const getPendingProducts = async (req, res) => {
+export const getPendingProducts = async (req, res, next) => {
   try {
     const { page = 1, limit = 20 } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
@@ -732,8 +732,8 @@ export const getPendingProducts = async (req, res) => {
       pages: Math.ceil(total / Number(limit)),
       data: products,
     });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -763,7 +763,7 @@ export const updateProductStatus = async (req, res, next) => {
 };
 
 // Feature or unfeature a product
-export const toggleFeaturedProduct = async (req, res) => {
+export const toggleFeaturedProduct = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
@@ -772,13 +772,13 @@ export const toggleFeaturedProduct = async (req, res) => {
     await product.save();
 
     res.status(200).json({ success: true, data: product });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (error) {
+   next(error);
   }
 };
 
 // Admin product stats overview
-export const adminProductStats = async (req, res) => {
+export const adminProductStats = async (req, res, next) => {
   try {
     const [total, active, pending, rejected, archived, own, marketplace] = await Promise.all([
       Product.countDocuments(),
@@ -803,9 +803,6 @@ export const adminProductStats = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'error: ' + error.message,
-    });
+   next(error);
   }
 };

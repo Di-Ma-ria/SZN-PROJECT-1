@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, logIn, getProfile, updateProfile, changePassword, deleteMyAccount, applyForSeller, applyForAdmin, resendOtp, verifyOtp, sendOtp, resetPassword, forgotPassword, logOUt } from '../controllers/authController.js';
+import { register, logIn, getProfile, updateProfile, changePassword, deleteMyAccount, applyForSeller, applyForAdmin, resendOtp, verifyOtp, sendOtp, resetPassword, forgotPassword, logOut } from '../controllers/authController.js';
 
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 import validate from '../validation/validate.js';
@@ -17,7 +17,6 @@ authRoutes.post('/reset-password',validate(resetPasswordSchema), resetPassword);
 authRoutes.post('/otp/send',validate(sendOtpSchema),sendOtp);
 authRoutes.post('/otp/verify',validate(verifyOtpSchema),verifyOtp);
 authRoutes.post('/otp/resend',validate(sendOtpSchema),resendOtp);
-authRoutes.post(`/logout`, logOUt)
 // PROTECTED 
 
 authRoutes.get('/me',         authMiddleware, getProfile);
@@ -30,5 +29,6 @@ authRoutes.delete('/delete-my-account', authMiddleware, validate(deleteAccountSc
 authRoutes.post('/apply-seller', authMiddleware, validate(applyForSellerSchema), applyForSeller);
 
 authRoutes.post('/apply-admin',  authMiddleware, applyForAdmin);
+authRoutes.post(`/logout`,authMiddleware ,logOut)
 
 export default authRoutes;

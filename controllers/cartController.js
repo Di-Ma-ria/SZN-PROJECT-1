@@ -45,7 +45,7 @@ export  const addToCart = async (req, res, next) => {
     if(product.stock < quantity) {
       return res.status(400).json({
         success: false,
-        message: 'Only ${product.stock} item(s) left in stock',
+        message: `Only ${product.stock} item(s) left in stock`,
       });
     }
 
@@ -57,7 +57,7 @@ export  const addToCart = async (req, res, next) => {
     }
 
     //this uses sale price if available, otherwise regular price
-    const effectivePrice = product.salePrice ?? product.prodct;
+    const effectivePrice = product.salePrice ?? product.basePrice;
 
     const existingItem = cart.items.find(
       (item) => item.product.toString() === productId

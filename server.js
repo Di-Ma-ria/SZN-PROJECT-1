@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
 import {rateLimit} from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 
 import ConnectDb from './config/db.js';
 import {errorHandler} from './middlewares/errorHandler.js';
@@ -49,6 +50,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(cors({origin: process.env.ClIENT_URL || '*', credentails: true}));
 
+app.use(cookieParser());
 
 // rate limiting
 const limiter = rateLimit({

@@ -26,7 +26,7 @@ const deductInventory = async(items) => {
 const restoreInventory = async (items) => {
   for(const item of items) {
     await Inventory.findOneAndUpdate({
-      product: items.product},
+      product: item.product},
       {$inc: {quantity: item.quantity } }
     );
   }
@@ -118,7 +118,7 @@ export const getMyOrders = async (req, res, next) => {
       .populate('items.product', 'name images')
       .skip(skip)
       .limit(Number(limit))
-      .sort({creatdAt: -1});
+      .sort({createdAt: -1});
 
 const total = await Order.countDocuments(filter);
 
@@ -180,7 +180,7 @@ export const getAllOrders = async (req, res, next) =>  {
 const skip = (page - 1) * limit;
 const orders = await Order.find(filter)
     .populate('customer', 'name email')
-    .populate('items.pproduct', 'name')
+    .populate('items.product', 'name')
     .skip(skip)
     .limit(Number(limit))
     .sort({createdAt: -1 });

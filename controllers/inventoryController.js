@@ -1,4 +1,5 @@
 import {Inventory} from '../models/inventoryModel.js';
+import { Product } from '../models/productModel.js';
 
 //get all inventory by admin
 
@@ -79,7 +80,7 @@ export const restockProduct = async (req, res, next) =>{
     }
 
     record.quantity += Number(quantity);
-    record.lastRestockedAt = new date();
+    record.lastRestockedAt = new Date();
     if(lowStockThreshold !== undefined) record.lowStockThreshold = lowStockThreshold;
 
     await record.save();

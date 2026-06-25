@@ -1,7 +1,7 @@
 import { User } from '../models/userModel.js';
 import { Product } from '../models/productModel.js';
 
-export const getWishlist = async (req, res) => {
+export const getWishlist = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id)
       .populate({
@@ -12,11 +12,11 @@ export const getWishlist = async (req, res) => {
 
     res.status(200).json({ success: true, data: user?.wishlist || [] });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+   next(error);
   }
 };
 
-export const toggleWishlist = async (req, res) => {
+export const toggleWishlist = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.productId);
     if (!product) {
@@ -37,6 +37,6 @@ export const toggleWishlist = async (req, res) => {
 
     res.status(200).json({ success: true, message: 'Added to wishlist' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+   next(error);
   }
 };

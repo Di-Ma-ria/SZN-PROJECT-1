@@ -2,10 +2,10 @@ import {User} from "../models/userModel.js";
 
 import {OTP} from '../models/otpModel.js';
 
-import generateToken from '../utils/generateToken.js';
 
 import{sendTemplateEmail} from '../utils/sendEmail.js';
 
+import { generateAccessToken, generateRefreshToken } from "../utils/generateToken.js";
 
 // to generate 6 digit otp
 
@@ -129,15 +129,31 @@ export const logIn = async (req, res, next) => {
     }
 
     await user.resetLoginAttempts();
-    const token = await generateToken({ 
+//Generate both tokens
+    const accessToken = await generateAccessToken({ 
       id: user._id,
-       role: user.role
-      });
+      role: user.role
+    });
+    
+    const refreshToken = await generateRefreshToken({ 
+      id: user._id 
+    });
+
+// Save refresh token to DB for revocation
+    user.refreshToken = refreshToken;
+    await user.save();
+//Send refresh token in httpOnly cookie
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // true on HTTPS
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    });
 
     return res.status(200).json({
       success:true,
       message: 'Login successful',
-      token,
+      accessToken,
       user: {
         id: user._id,
         name: user.name,
@@ -164,7 +180,7 @@ export const getProfile = async (req, res, next) => {
 
     if(!user || user.isDeleted) {
       return res.status(404).json({
-        success: false, message: 'User noot found'
+        success: false, message: 'User not found'
       });
     }
 
@@ -412,7 +428,7 @@ export const resetPassword = async (req, res, next) => {
       });
     }
 
-    const user = await user.findOne({ email, isDeleted: false}).select('+password');
+    const user = await User.findOne({ email, isDeleted: false}).select('+password');
     if(!user){
       return res.status(404).json({
         success: false,
@@ -501,11 +517,23 @@ export const applyForAdmin = async (req, res, next) => {
   }
 };
 //LOGOUT -invalidates all tokens issued before this moment
-export const logOUt = async(req, res, next)=>{
-  try{
-    await User.findByIdAndDelete(req.user.id, {$inc:{tokenVersion:1} });
-    return res.json({success:true, message:"Logged out successfully"})
-  }catch(error){
-      next(error);
+// export const logOut = async(req, res, next)=>{
+//   try{
+//     await User.findByIdAndUpdate(req.user.id, {$inc:{tokenVersion:1} });
+//     return res.json({success:true, message:"Logged out successfully"})
+//   }catch(error){
+//       next(error);
+//   }
+// } 
+export const logOut = async (req, res) => {
+  const { refreshToken } = req.cookies;
+  if (refreshToken) {
+    const user = await User.findOne({ refreshToken });
+    if (user) {
+      user.refreshToken = null;
+      await user.save();
+    }
   }
-}
+  res.clearCookie('refreshToken');
+  res.json({ message: 'Logged out' });
+};
