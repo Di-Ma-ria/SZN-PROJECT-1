@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 
 // return a promise so callers can `await` token genration
 
- const generateToken = (payload, expiresIn = '1h') => {
+ const generateToken = (payload, expiresIn = '10mins') => {
   const secret = process.env.JWT_SECRET;
 
   if(!secret) throw new Error ('JWT_SECRET required')
