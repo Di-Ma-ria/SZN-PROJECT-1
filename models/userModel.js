@@ -1,9 +1,7 @@
 import mongoose from 'mongoose';
 import bcryptjs from 'bcryptjs';
 
-const userSchema = new mongoose.Schema(
-  {
-
+const userSchema = new mongoose.Schema({
   // INFO 
   name: {
     type: String,
@@ -22,7 +20,7 @@ const userSchema = new mongoose.Schema(
   password: {
     type: String,
     required: true,
-    minlength:8,
+    minlength: 8,
     select: false,
   },
 
@@ -31,7 +29,6 @@ const userSchema = new mongoose.Schema(
     trim: true,
     default: null
   },
-
 
   profileImage: {
     type: String,
@@ -44,38 +41,27 @@ const userSchema = new mongoose.Schema(
     default: 'customer'
   },
 
-
-
-// // ALL ROLES ADDRESS
+  // ALL ROLES ADDRESS
   address: {
     street: {
       type: String,
-    // required: true,
       trim: true,
     },
-
     city: {
       type: String,
-     //required: true,
       trim: true,
     },
-
     state: {
       type: String,
-      //required: true,
       trim: true,
     },
-
     country: {
       type: String,
-     // required: true
       trim: true,
     },
   },
 
-
-  //ALL ROLE ACCOUNT STATUS 
-
+  // ALL ROLE ACCOUNT STATUS 
   isVerified: {
     type: Boolean,
     default: false
@@ -101,18 +87,17 @@ const userSchema = new mongoose.Schema(
     default: null
   },
 
-// SELLER FIELDS 
-
+  // SELLER FIELDS 
   sellerStatus: {
     type: String,
-    enum: ['none', 'pending','approved', 'rejected'],
+    enum: ['none', 'pending', 'approved', 'rejected'],
     default: 'none'
   },
 
   sellerRejectionReason: {
-      type: String,
-      default: null
-    },
+    type: String,
+    default: null
+  },
   
   isVerifiedSeller: {
     type: Boolean,
@@ -127,78 +112,39 @@ const userSchema = new mongoose.Schema(
     storeDescription: {
       type: String,
     },
-
     storeImage: {
       type: String,
       default: null
     },
-
     storeAddress: {
-      street: {
-      type: String,
-      //required: true,
+      street: { type: String },
+      city: { type: String },
+      state: { type: String },
+      country: { type: String },
     },
-
-      city: {
-      type: String,
-      //required: true,
-    },
-
-      state: {
-      type: String,
-      //required: true,
-    },
-
-     country: {
-      type: String,
-      //required: true
-    },
-    },
-  },
-
-
     bankDetails: {
-      bankName: {
-        type: String,
+      bankName: { type: String, trim: true },
+      accountNumber: { type: String },
+      accountName: { type: String },
     },
-    accountNumber :{
-      type: String
-    },
-
-    accountName: {
-      type: String
-    },
-
-    },
-
     totalSales: {
       type: Number,
-      default: 0
+      default: 0,
     },
-
     totalRevenue: {
       type: Number,
-      default: 0
+      default: 0,
     },
     rating: {
-      average: {
-        type: Number,
-        default: 0
-      },
+      average: { type: Number, default: 0 },
+      count: { type: Number, default: 0 },
+    }
+  }, // <-- This closing brace was missing
 
-      count: {
-        type: Number,
-        default: 0
-      },
-},
-
-
-
-  //ADMIN FIELD 
-
+  // ADMIN FIELD 
   adminStatus: {
     type: String,
-    enum:['none', 'pending',  'approved', 'rejected'],
+    enum: ['none', 'pending', 'approved', 'rejected'],
     default: 'none'
   },
 
@@ -207,8 +153,7 @@ const userSchema = new mongoose.Schema(
     default: null
   },
 
-
-  //CUSTOMER 
+  // CUSTOMER 
   wishlist: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product'
@@ -225,7 +170,6 @@ const userSchema = new mongoose.Schema(
   },
 
   // SECURITY
-
   passwordChangedAt: {
     type: Date,
     default: null
@@ -248,50 +192,47 @@ const userSchema = new mongoose.Schema(
 
   loginAttempts: {
     type: Number,
-    default: 0
+    default: 0,
   },
 
   lockUntil: {
     type: Date,
-    default: null
-    },
+    default: null,
   },
-  {timestamps: true}
-);
+  refreshToken:{
+    type:String,
+    default:null,
+  },
+}, { timestamps: true });
+
 // HASH PASSWORD WITH BCRYPT BEFORE SAVING
-
 userSchema.pre('save', async function () {
-  if(!this.isModified('password')) return;
-
-  this.password = await  bcryptjs.hash(this.password, 12);
+  if (!this.isModified('password')) return;
+  this.password = await bcryptjs.hash(this.password, 12);
   this.passwordChangedAt = Date.now();
 });
 
-// compare passwords at logim  
+// compare passwords at login  
 userSchema.methods.comparePassword = async function(enteredPassword) {
   return await bcryptjs.compare(enteredPassword, this.password);
 };
 
-// checks if acccount is locked
-userSchema.methods.isLocked = function()
- {
-  return !! (this.lockUntil && this.lockUntil > Date.now());
- };
+// checks if account is locked
+userSchema.methods.isLocked = function () {
+  return !!(this.lockUntil && this.lockUntil > Date.now());
+};
 
 // increment login attempts
-
- userSchema.methods.incrementLoginAttempts = async function() {
+userSchema.methods.incrementLoginAttempts = async function() {
   this.loginAttempts += 1;
   if (this.loginAttempts >= 5) {
     this.lockUntil = Date.now() + 2 * 60 * 60 * 1000;
   }
-  this.loginAttempts += 1;
   await this.save();
 };
 
 // reset login attempts
-
-userSchema.methods.resetLoginAttempts = async function() {
+userSchema.methods.resetLoginAttempts = async function () {
   this.loginAttempts = 0;
   this.lockUntil = null;
   this.lastLogin = Date.now();

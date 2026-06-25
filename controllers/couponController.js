@@ -86,7 +86,7 @@ export const validateCoupon = async ( req, res, next ) => {
         message: 'This coupon has expired'
       });
     }
-    if(coupon.usageCount >= coupon.maxUage){
+    if(coupon.usageCount >= coupon.maxUsage){
       return res.status(400).json({
         success: false,
         message: 'This coupon has reached its usage limit'
@@ -107,7 +107,7 @@ export const validateCoupon = async ( req, res, next ) => {
     }
 
     //Calculate discount
-    let discount = coupon.discounttype === 'percentage'
+    let discount = coupon.discountType === 'percentage'
     ?(orderAmount * coupon.discountValue) / 100 
     : coupon.discountValue;
 
@@ -120,7 +120,7 @@ export const validateCoupon = async ( req, res, next ) => {
       message: 'Coupon is valid',
       data: {
         code:  coupon.code,
-        discountType: coupon.dsicountType,
+        discountType: coupon.discountType,
         discountValue:  coupon.discountValue,
         discount,
         finalAmount,
@@ -161,7 +161,7 @@ export const toggleCouponStatus = async (req, res, next) => {
 
 export const deleteCoupon = async (req, res, next) => {
   try{
-    const coupon = await coupon.findByIdAndDelete(req.params.id);
+    const coupon = await Coupon.findByIdAndDelete(req.params.id);
     if(!coupon){
       return res.status(404).json({
         success: false,

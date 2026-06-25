@@ -38,7 +38,7 @@ otpSchema.pre('save', async function (){
 });
 
 otpSchema.methods.compareOtp = async function (candidateOtp) {
-  return await bcryptjs.compare(candidateOtp, thisotp);
+  return await bcryptjs.compare(candidateOtp, this.otp);
 };
 
 export const OTP = mongoose.model('OTP', otpSchema);

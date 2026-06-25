@@ -7,7 +7,7 @@ const couponSchema = new mongoose.Schema(
       required: [true, 'Coupon code is required'],
       unique: true,
       uppercase: true,
-      trim: trim,
+      trim: true,
     },
     discountType: {
       type: String,

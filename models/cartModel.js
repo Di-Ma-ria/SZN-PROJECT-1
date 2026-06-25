@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const cartItemSchema = new mongoose.Sschema(
+const cartItemSchema = new mongoose.Schema(
   {
     product: {
       type: mongoose.Schema.Types.ObjectId,
@@ -46,14 +46,14 @@ const cartSchema = new mongoose.Schema(
       },
   },
   {
-    timesatmps: true
+    timestamps: true
   }
 );
 
 //auto-calculate totlas before every save
 
 cartSchema.pre('save', function (){
-  this.totalPrice = this.item.reduce(
+  this.totalPrice = this.items.reduce(
     (sum,item) => sum + item.price *item.quantity, 0
   );
 

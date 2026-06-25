@@ -73,7 +73,7 @@ export const getAllCategories = async (req, res, next) => {
       filter.name = { $regex: search, $options: 'i'};
     }
 
-    const categories = await Categories.find(filter)
+    const categories = await Category.find(filter)
     .populate('parent', 'name slug')
     .sort({ name: 1});
 

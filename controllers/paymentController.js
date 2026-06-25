@@ -104,7 +104,7 @@ if(!order) {
   });
 } 
 
-if(order.paymentStatus == 'paid') {
+if(order.paymentStatus === 'paid') {
   return res.json({
     success: true, 
     message: 'Payment already verified', order
@@ -120,7 +120,7 @@ await order.save();
 
 //update customer stats from your User model
 await User.findByIdAndUpdate(order.customer._id, {
-  $inc: { totalOrder: 1, totalSpent: order.totalAmount},
+  $inc: { totalOrders: 1, totalSpent: order.totalAmount},
 });
 
 // send payment confirmation email
@@ -148,7 +148,7 @@ export const paystackWebhook = async (req, res, next ) => {
   try{
     const crypto = await import('crypto');
     const hash = crypto.default
-      .createHmac('sha%12', PAYSTACK_SECRET)
+      .createHmac('sha512', PAYSTACK_SECRET)
       .update(JSON.stringify(req.body))
       .digest('hex');
 

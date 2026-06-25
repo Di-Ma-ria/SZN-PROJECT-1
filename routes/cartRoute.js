@@ -1,12 +1,11 @@
 import express from 'express';
 
-import { getCart, addToCart, updateCartItem,removeFromCart, clearCart } from '../controller/cartController.js';
-
- import {authMiddleware} from '../middlewares/authMiddleware.js';
+import {authMiddleware} from '../middlewares/authMiddleware.js';
  
  import validate from '../validation/validate.js';
 
  import { addToCartSchema, updateCartItemSchema } from '../validation/cartValidation.js';
+import { addToCart, clearCart, getCart, removeFromCart, updateCartItem } from '../controllers/cartController.js';
 
 
  const cartRoutes = express.Router();
