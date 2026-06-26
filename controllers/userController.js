@@ -1,5 +1,7 @@
 import {User} from '../models/userModel.js';
 
+import {sendTemplateEmail} from '../utils/sendEmail.js';
+
 
 export const getAllUsers = async (req, res, next) => {
   try{
@@ -119,6 +121,12 @@ export const handleSellerApplication = async (req, res, next) => {
       user.sellerProfile.isVerifiedSeller = true;
       await user.save();
 
+      await sendTemplateEmail(user.email, 'sellerApplicationResult', {
+        name: user.name,
+        action: 'approve',
+      });
+    
+
       return res.json({
         success: true,
         message: `${user.name} is now an approved seller`,
@@ -129,6 +137,12 @@ export const handleSellerApplication = async (req, res, next) => {
       user.sellerStatus = 'rejected';
       user.sellerRejectionReason = reason;
       await user.save();
+
+      await sendTemplateEmail(user.email, 'sellerApplicationResult', {
+        name: user.name,
+        action: 'reject',
+        reason,
+      });
 
       return res.json({
         success: true,
@@ -241,6 +255,11 @@ export  const suspendUser = async (req, res, next) => {
     user.isSuspended = true;
     user.suspensionReason = reason;
     await user.save();
+
+    await sendTemplateEmail(user.email, 'accountSuspended', {
+      name: user.name,
+      reason: user.suspensionReason,
+    });
 
     res.json({
       success: true,

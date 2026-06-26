@@ -50,7 +50,7 @@ const response =  await axios.post(
       customerId:  req.user._id.toString(),
       customerName: order.customer.name,
     },
-    callback_url: `${process.env.ClIENT_URL}/payment/verify`,
+    callback_url: `${process.env.CLIENT_URL}/payment/verify`,
   },
   {headers: paystackHeaders}
 );

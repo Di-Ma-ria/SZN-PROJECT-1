@@ -153,6 +153,8 @@ export const updateCartItem = async (req, res, next) => {
 
 export const removeFromCart = async (req, res, next) => {
   try{
+    const  {productId} =req.params;
+    
     const cart = await Cart.findOne({user: req.user.id});
     if(!cart) {
       return res.status(404).json({
