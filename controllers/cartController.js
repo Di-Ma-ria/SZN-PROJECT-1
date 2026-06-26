@@ -31,8 +31,7 @@ export  const addToCart = async (req, res, next) => {
 
     const product = await Product.findOne({
       _id: productId,
-      isDeleted: false,
-      isActive: true,
+      status:'active',
     });
 
     if(!product) {
@@ -120,13 +119,13 @@ export const updateCartItem = async (req, res, next) => {
     if(!item) {
       return res.status(404).json({
         success: false,
-        mesaage: 'Item not found in cart',
+        message: 'Item not found in cart',
       });
     }
 
 
     //check stock
-    const product = await product.findById(productId);
+    const product = await Product.findById(productId);
     if(product && quantity > product.stock) {
       return res.status(400).json({
         success: false,

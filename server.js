@@ -1,5 +1,7 @@
-import express from 'express';
 import dotenv from 'dotenv';
+dotenv.config();
+
+import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import {rateLimit} from 'express-rate-limit';
@@ -32,7 +34,6 @@ import paymentRoutes from './routes/paymentRoute.js';
 import cartRoutes from './routes/cartRoute.js';
 
 
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -65,17 +66,17 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // ROUTES
-app.use('/auth', authRoutes);
-app.use('/user', userRoutes);
-app.use('/products', ProductRoutes);
-app.use('/reviews', reviewRoutes);
-app.use('/wishlist', wishlistRoutes);
-app.use('/cart',      cartRoutes);
-app.use('/categories',categoryRoutes);
-app.use('/inventory', inventoryRoutes);
-app.use('/orders',    orderRoutes);
-app.use('/coupons',   couponRoutes);
-app.use('/payments',  paymentRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/products', ProductRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/cart',      cartRoutes);
+app.use('/api/categories',categoryRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/orders',    orderRoutes);
+app.use('/api/coupons',   couponRoutes);
+app.use('/api/payments',  paymentRoutes);
 
 app.get('/',(req, res) => {
   res.json({message: "E-shop api is running"});

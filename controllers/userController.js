@@ -118,7 +118,7 @@ export const handleSellerApplication = async (req, res, next) => {
     if(action === 'approve') {
       user.role = 'seller';
       user.sellerStatus = 'approved';
-      user.sellerProfile.isVerifiedSeller = true;
+      user.isVerifiedSeller = true;
       await user.save();
 
       await sendTemplateEmail(user.email, 'sellerApplicationResult', {
