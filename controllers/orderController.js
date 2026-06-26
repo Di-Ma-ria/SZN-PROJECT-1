@@ -91,7 +91,7 @@ if(appliedCoupon){
 
 // send confirmation email
 
-await sendTemplateEmail(req.user.email, 'orderconfirmation', {
+await sendTemplateEmail(req.user.email, 'orderConfirmation', {
   name: req.user.name,
   order,
 });

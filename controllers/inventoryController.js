@@ -11,7 +11,7 @@ export const getAllInventory = async (req, res, next) => {
 
     const filter = {};
     if(lowStock === 'true') {
-      filter.$expr = {$lte: ['$quantity', '$slowStockThreshold']};
+      filter.$expr = {$lte: ['$quantity', '$lowStockThreshold']};
     }
 
     const inventory = await Inventory.find(filter)

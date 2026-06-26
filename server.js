@@ -48,7 +48,7 @@ app.use(helmet());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(cors({origin: process.env.ClIENT_URL || '*', credentails: true}));
+app.use(cors({origin: process.env.CLIENT_URL || '*', credentails: true}));
 
 app.use(cookieParser());
 

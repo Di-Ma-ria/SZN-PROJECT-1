@@ -163,7 +163,7 @@ export const sendEmail = async ({ to, subject, html }) => {
   }
 };
 
-// ─── Helper — call a named template ──────────────────────────────────
+// ─── Helper — call a named template ───
 // Usage: await sendTemplateEmail(user.email, 'welcome', { name: user.name })
 export const sendTemplateEmail = async (to, templateName, data) => {
   const template = templates[templateName](data);

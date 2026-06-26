@@ -1,6 +1,11 @@
 import jwt from 'jsonwebtoken';
 
-const generateAccessToken = (payload) => {
+
+// return a promise so callers can `await` token genration
+
+ const generateAccessToken = (payload, expiresIn = '10m') => {
+
+
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error('JWT_SECRET required');
   
