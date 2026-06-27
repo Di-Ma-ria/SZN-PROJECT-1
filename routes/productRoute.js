@@ -18,7 +18,7 @@ const ProductRoutes = express.Router();
 
 // PUBLIC
 ProductRoutes.get(`/search`, searchProducts)
-ProductRoutes.get(`/`, getSearchSuggestions )
+ProductRoutes.get(`/suggestions?q`, getSearchSuggestions )
 ProductRoutes.get(`/featured`, getFeaturedProducts)
 ProductRoutes.get(`/new-arrivals`, getNewArrivals)
 ProductRoutes.get(`/category/:categoryId`, getProductsByCategory)

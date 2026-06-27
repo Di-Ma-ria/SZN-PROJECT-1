@@ -60,7 +60,7 @@ export const register = async (req, res, next) => {
       purpose: 'email-verification',
     });
 
-    const token = await generateAccessToken({
+    const accessToken = await generateAccessToken({
       id: user._id,
       role: user.role
     });

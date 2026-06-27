@@ -114,7 +114,7 @@ export const deductStock = async (req, res, next) => {
     if (record.quantity < quantity) {
       return res.status(400).json({
         success: false,
-        messsage: 'Insufficent stock to deduct'
+        message: 'Insufficent stock to deduct'
       });
     }
 

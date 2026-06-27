@@ -25,7 +25,8 @@ export const initializePayment = async (req, res, next) => {
     //only the customer who owns this order can pay
     if(order.customer._id.toString() !== req.user._id.toString()) {
       return res.status(403).json({
-        success: 'Access denied'
+        success: false,
+        message:'Access Denied'
       });
         }
 
@@ -149,7 +150,7 @@ export const paystackWebhook = async (req, res, next ) => {
     const crypto = await import('crypto');
     const hash = crypto.default
       .createHmac('sha512', PAYSTACK_SECRET)
-      .update(JSON.stringify(req.body))
+      .update(req.body)
       .digest('hex');
 
 if (hash !==req.headers['x-paystack-signature']) {

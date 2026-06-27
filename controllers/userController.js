@@ -214,7 +214,7 @@ export const handleAdminApplication = async (req, res, next) => {
 
       return res.json({
         success: true,
-        message: `${user.name} this user's admin application has been deleted`,
+        message: `${user.name} this user's admin application has been rejected`,
       });
     }
   } catch (error){
