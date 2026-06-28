@@ -176,7 +176,7 @@ export const getLowStockProducts = async (req, res) => {
 // Update stock for base product (no variants)
 export const updateStock = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params._id);
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
 
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
@@ -201,7 +201,7 @@ export const updateStock = async (req, res) => {
 // Update stock for a specific variant
 export const updateVariantStock = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params._id);
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
 
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);

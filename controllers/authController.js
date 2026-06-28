@@ -174,7 +174,7 @@ export const logIn = async (req, res, next) => {
 
 export const getProfile = async (req, res, next) => {
   try{
-    const user = await User.findById(req.user.id).select(
+    const user = await User.findById(req.user._id).select(
       '-password -passwordResetToken -passwordResetExpires -loginAttempts -lockUntil'
     );
 
@@ -196,7 +196,7 @@ export const updateProfile = async (req, res, next ) => {
   try{
     const { name, phone, address} = req.body;
 
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user._id);
     if(!user || user.isDeleted) {
       return res.status(404).json({
         success: false,
@@ -234,7 +234,7 @@ export const changePassword = async (req, res, next) => {
   try {
     const { oldPassword, newPassword } = req.body;
 
-    const user = await User.findById(req.user.id).select('+password');
+    const user = await User.findById(req.user._id).select('+password');
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -259,7 +259,7 @@ export const deleteMyAccount = async (req, res, next) => {
   try {
     const { password } = req.body;
 
-    const user = await User.findById(req.user.id).select('+password');
+    const user = await User.findById(req.user._id).select('+password');
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -418,7 +418,6 @@ export const resetPassword = async (req, res, next) => {
     const record = await OTP.findOne({
       email, 
       purpose: 'password-reset',
-      verified: true,
     });
 
     if(!record) {
@@ -426,6 +425,14 @@ export const resetPassword = async (req, res, next) => {
         success: false,
         message: 'Please verify your OTP first before resetting your password',
       });
+    }
+
+    const isOtpValid = await bcrypt.compare(otp, record.otp);
+    if(!isOtpValid || !record.verified){
+      res.status(400).json({
+        success:false,
+        message:"Invalid or Unverified OTP",
+      })
     }
 
     const user = await User.findOne({ email, isDeleted: false}).select('+password');
@@ -456,7 +463,7 @@ export const resetPassword = async (req, res, next) => {
 
 export const applyForSeller = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -492,7 +499,7 @@ export const applyForSeller = async (req, res, next) => {
 
 export const applyForAdmin = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }

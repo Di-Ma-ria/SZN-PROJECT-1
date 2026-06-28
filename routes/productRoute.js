@@ -16,40 +16,35 @@ import {addProductImages,adminGetAllProducts,adminProductStats,
 
 const ProductRoutes = express.Router();
 
-// PUBLIC
+
 ProductRoutes.get(`/search`, searchProducts)
-ProductRoutes.get(`/suggestions?q`, getSearchSuggestions )
+ProductRoutes.get(`/suggestions`, getSearchSuggestions )
 ProductRoutes.get(`/featured`, getFeaturedProducts)
 ProductRoutes.get(`/new-arrivals`, getNewArrivals)
+ProductRoutes.get(`/deals`, getDeals)
 ProductRoutes.get(`/category/:categoryId`, getProductsByCategory)
 ProductRoutes.get(`/category/slug/:slug`, getProductsByCategorySlug)
 ProductRoutes.get(`/brand/:brand`, getProductsByBrand)
-ProductRoutes.get(`/deals`, getDeals)
-ProductRoutes.get('/', getAllProducts);
-ProductRoutes.get('/:id', getSingleProduct);
-ProductRoutes.get(`/:id/related`, getRelatedProducts)
-ProductRoutes.post(`/`, compareProducts)
 
-// AUTHENTICATED
-//Seller
+
 ProductRoutes.get('/seller/my-products', authMiddleware, getMyProducts);
 ProductRoutes.get(`/seller/my-productstats`, authMiddleware, isSeller,isAdmin, getMyProductStats)
-ProductRoutes.get(`/:id`, authMiddleware, isSeller, getProductAnalytics)
-ProductRoutes.post('/',authMiddleware,isSeller, uploadProductImages,uploadToCloudinary,validate(createProductSchema),createProduct);
-ProductRoutes.post(`/:id/images`,authMiddleware,isSeller, uploadProductImages, uploadToCloudinary, addProductImages)
-
-ProductRoutes.patch('/:id',authMiddleware,isSeller,uploadProductImages,uploadToCloudinary,validate(updateProductSchema),updateProduct);
-
-
-ProductRoutes.delete(`/:id/image`,authMiddleware ,isSeller, removeProductImage)
-ProductRoutes.delete(`/:id`,authMiddleware,isSeller, deleteProduct)
-
-// ADMIN ONLY
 ProductRoutes.get('/admin/all', authMiddleware, isAdmin, adminGetAllProducts);
 ProductRoutes.get(`/admin/pending`,authMiddleware,isAdmin, getPendingProducts )
 ProductRoutes.get(`/admin/stats`,authMiddleware,isAdmin,adminProductStats)
 
-ProductRoutes.patch('/:id/status',authMiddleware,isAdmin,validate(updateStatusSchema),updateProductStatus);
 ProductRoutes.patch(`/admin/:id/feature`, authMiddleware,isAdmin, toggleFeaturedProduct)
+ProductRoutes.get(`/seller/:id/analytics`, authMiddleware, isSeller, getProductAnalytics)
+
+ProductRoutes.get('/', getAllProducts);
+ProductRoutes.post(`/`, compareProducts)
+ProductRoutes.post('/',authMiddleware,isSeller, uploadProductImages,uploadToCloudinary,validate(createProductSchema),createProduct);
+ProductRoutes.get(`/:id/related`, getRelatedProducts)
+ProductRoutes.get('/:id', getSingleProduct);
+ProductRoutes.patch('/:id',authMiddleware,isSeller,uploadProductImages,uploadToCloudinary,validate(updateProductSchema),updateProduct);
+ProductRoutes.delete(`/:id`,authMiddleware,isSeller, deleteProduct)
+ProductRoutes.post(`/:id/images`,authMiddleware,isSeller, uploadProductImages, uploadToCloudinary, addProductImages)
+ProductRoutes.delete(`/:id/image`,authMiddleware ,isSeller, removeProductImage)
+ProductRoutes.patch('/admin/:id/status',authMiddleware,isAdmin,validate(updateStatusSchema),updateProductStatus);
 
 export default ProductRoutes;

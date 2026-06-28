@@ -53,7 +53,7 @@ export const getAllUsers = async (req, res, next) => {
 export const getSingleUser = async (req, res, next) => {
   try{
     const user = await User.findOne({
-      _id: req.params.id,
+      _id: req.params._id,
       isDeleted: false
     }).select('-password -passwordResetToken -passwordResetExpires -loginAttempts -lockUntil');
 
@@ -100,7 +100,7 @@ export const handleSellerApplication = async (req, res, next) => {
   try{
     const {action, reason} = req.body;
 
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params._id);
     if(!user) {
       return res.status(404).json({
         success: false,
@@ -181,7 +181,7 @@ export const handleAdminApplication = async (req, res, next) => {
   try{
     const { action, reason} = req.body;
 
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params._id);
     if(!user) {
       return res.status(404).json({
         success: false,
@@ -230,7 +230,7 @@ export  const suspendUser = async (req, res, next) => {
   try{
     const {reason} = req.body;
 
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params._id);
     if(!user) {
       return res.status(404).json({
         success: false,
@@ -275,7 +275,7 @@ export  const suspendUser = async (req, res, next) => {
 
 export const unsuspendUser = async (req, res, next) => {
   try{
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params._id);
     if(!user) {
       return res.status(404).json({
         success: false,
@@ -308,7 +308,7 @@ export const unsuspendUser = async (req, res, next) => {
 
 export const makeAdmin  = async (req, res, next) => {
   try{
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params._id);
 
     if(!user){
       return res.status(404).json({
@@ -355,7 +355,7 @@ export const makeAdmin  = async (req, res, next) => {
 // DEMOTE ADMIN (SUPERAMIN ONLY)
 export const demoteAdmin = async (req, res, next) => {
   try{
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params._id);
     if(!user){
       return res.status(404).json({
         success: false,
@@ -388,7 +388,7 @@ export const demoteAdmin = async (req, res, next) => {
 
 export const deleteUser = async (req, res, next) => {
   try{
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params._id);
     if(!user) {
       return res.status(404).json({
         success: false,

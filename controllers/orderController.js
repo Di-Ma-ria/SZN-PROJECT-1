@@ -138,7 +138,7 @@ return res.json({
 
 export const getSingleOrder = async (req, res, next) => {
   try{
-    const order = await Order.findById(req.params.id)
+    const order = await Order.findById(req.params._id)
       .populate('customer', 'name email phone')
       .populate('items.product', 'name images');
 
@@ -206,7 +206,7 @@ export const updateOrderStatus = async (req, res, next) => {
   try{
     const {status} = req.body;
 
-    const order = await Order.findById(req.params.id).populate('customer', 'name email');
+    const order = await Order.findById(req.params._id).populate('customer', 'name email');
     if(!order){
       return res.status(404).json({
         success: false,
@@ -249,7 +249,7 @@ export  const cancelOrder = async (req, res, next) => {
   try{
     const {reason} = req.body;
 
-    const order = await Order.findById(req.params.id).populate('customer', 'name email');
+    const order = await Order.findById(req.params._id).populate('customer', 'name email');
     if(!order){
       return res.status(404).json({
         success: false,

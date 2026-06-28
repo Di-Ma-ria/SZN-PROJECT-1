@@ -4,7 +4,7 @@ import { Product } from '../models/productModel.js';
 
 export const getCart = async (req, res, next) => {
   try{
-    let cart = await Cart.findOne({user: req.user.id}).populate('items.product', 'name price salePrice images stock isActive brand');
+    let cart = await Cart.findOne({user: req.user._id}).populate('items.product', 'name price salePrice images stock isActive brand');
 
     if(!cart){
       return res.json({
@@ -50,9 +50,9 @@ export  const addToCart = async (req, res, next) => {
 
     //this finds or creates cart
 
-    let cart = await Cart.findOne({user: req.user.id});
+    let cart = await Cart.findOne({user: req.user._id});
     if(!cart){
-      cart = new Cart({user: req.user.id, items: []});
+      cart = new Cart({user: req.user._id, items: []});
     }
 
     //this uses sale price if available, otherwise regular price
@@ -105,7 +105,7 @@ export const updateCartItem = async (req, res, next) => {
     const {quantity} = req.body;
     const {productId} = req.params;
 
-    const cart = await Cart.findOne({user: req.user.id});
+    const cart = await Cart.findOne({user: req.user._id});
     if(!cart) {
       return res.status(404).json({
         success: false,
@@ -154,7 +154,7 @@ export const removeFromCart = async (req, res, next) => {
   try{
     const  {productId} =req.params;
     
-    const cart = await Cart.findOne({user: req.user.id});
+    const cart = await Cart.findOne({user: req.user._id});
     if(!cart) {
       return res.status(404).json({
         success: false,
@@ -195,7 +195,7 @@ export const removeFromCart = async (req, res, next) => {
 
 export const clearCart = async (req, res, next) => {
   try{
-    const cart = await Cart.findOne({user: req.user.id});
+    const cart = await Cart.findOne({user: req.user._id});
     if(!cart) {
       return res.status(404).json({
         success: false,

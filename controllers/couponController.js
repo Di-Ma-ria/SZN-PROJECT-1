@@ -135,7 +135,7 @@ export const validateCoupon = async ( req, res, next ) => {
 
 export const toggleCouponStatus = async (req, res, next) => {
   try{
-    const coupon = await Coupon.findById(req.params.id);
+    const coupon = await Coupon.findById(req.params._id);
     if(!coupon){
       return res.status(404).json({
         success: false,
@@ -161,7 +161,7 @@ export const toggleCouponStatus = async (req, res, next) => {
 
 export const deleteCoupon = async (req, res, next) => {
   try{
-    const coupon = await Coupon.findByIdAndDelete(req.params.id);
+    const coupon = await Coupon.findByIdAndDelete(req.params._id);
     if(!coupon){
       return res.status(404).json({
         success: false,
