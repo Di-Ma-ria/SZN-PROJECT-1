@@ -4,7 +4,10 @@ import {Order} from '../models/orderModel.js';
 
 import{User} from '../models/userModel.js';
 
+import { Inventory } from '../models/inventoryModel.js';
+
 import {sendTemplateEmail} from '../utils/sendEmail.js';
+import { rmSync } from 'fs';
 
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
@@ -36,6 +39,13 @@ export const initializePayment = async (req, res, next) => {
             message: 'This order has already been paid for'
           });
         }
+    //GUARD: Cannot pay for a cancelled order
+    if(order.status === 'cancelled') {
+      return res.status(400).json({
+        success:false,
+        message:"Cannot process payment for a cancelled order",
+      });
+    }
 
 
 const response =  await axios.post(
@@ -124,11 +134,8 @@ await User.findByIdAndUpdate(order.customer._id, {
   $inc: { totalOrders: 1, totalSpent: order.totalAmount},
 });
 
-// send payment confirmation email
-await sendTemplateEmail(order.customer.email, 'orderConfirmation', {
-  name: order.customer.name,
-  order,
-});
+
+//No Email Here because webhook handles every confirmation email reliably even if the customer closes the tab, sending email here too causes a duplicate email.
 
 return res.json({
   success: true,
@@ -221,3 +228,89 @@ return res.json({
     next(error);
   }
 };
+
+//Proccess refund (admin initiates, paystack executes)
+export const refundPayment = async(req, res, next)=>{
+  try{
+    const {orderId} = req.params;
+    const {reason} = req.body;
+
+    const order = await Order.findById(orderId).populate('customer', 'name email');
+    if(!order) {
+      return res.status(404).json({
+        success:false,
+        message:'Order not found',
+      });
+    }
+
+    if(order.paymentStatus !== 'paid') {
+      return res.status(400).json({
+        success:false,
+        message:'Only paid orders can be refunded',
+      });
+    }
+
+    if(order.paymentStatus === 'refunded') {
+      return res.status(400).json({
+        success:false,
+        message:"This order has already been refunded",
+      });
+    }
+
+    if(!order.paymentReference) {
+      return res.status(400).json({
+        success:false,
+        message:'No payment refrence found on this order - cannot process refund',
+      });
+    }
+
+    // Call paystack refund API
+    const response = await axios.post(
+      'https://api.paystack.co/refund',
+      {
+        transaction: order.paymentReference,
+        amount: Math.round(order.totalAmount*100), //full refund in kobo
+        merchant_note: reason || 'Customer refund',
+      },
+      {headers: paystackHeaders}
+    );
+
+    if(!response.data.status) {
+      return res.status(502).json({
+        success:false,
+        message:'Paystack refund request failed',
+        detail: response.data.message,
+      });
+    }
+
+    //Mark order as refunded
+    order.paymentStatus = 'refunded';
+    order.status = 'cancelled';
+    order.cancelledAt = new Date();
+    order.cancellationReason = reason || 'Refund proccessed by admin';
+    await order.save();
+
+    //Restore inventory
+    for(const item of order.items) {
+      await Inventory.findByIdAndUpdate(
+        {product: item.product},
+        {$inc: {quantity: item.quantity} }
+      );
+    }
+
+    //Notify customer
+    await sendTemplateEmail(order.customer.email, 'orderRefunded', {
+      name: order.customer.name,
+      order,
+      reason: reason || 'Your order has been refunded',
+    });
+
+    return res.json({
+      success:true,
+      message:'Refund processed successfully',
+      order,
+    })
+  }catch(error){
+next(error);
+  }
+}

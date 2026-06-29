@@ -40,6 +40,13 @@ export  const addToCart = async (req, res, next) => {
         message: 'Product not found or unavailable',
       });
     }
+    // GUARD: Seller cannot buy their own products
+    if(product.seller.toString()=== req.user._id.toString()) {
+      return res.status(403).json({
+        success:false,
+        message:'You cannot add your own product to your cart',
+      });
+    }
 // this checks for the available stocks
     if(product.stock < quantity) {
       return res.status(400).json({
@@ -69,7 +76,7 @@ export  const addToCart = async (req, res, next) => {
       if(newQuantity > product.stock) {
         return res.status(400).json({
           success: false,
-          message: `Cannot add more. Only ${product.stock}in stock and you already have ${existingItem.quantity} in your cart`,
+          message: `Cannot add more. Only ${product.stock} in stock and you already have ${existingItem.quantity} in your cart`,
         });
       }
 

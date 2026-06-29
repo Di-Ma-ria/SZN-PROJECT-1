@@ -476,6 +476,14 @@ export const applyForSeller = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Your seller application is already pending review' });
     }
 
+    //GUARD: Admins and superadmins cannot apply to be sellers
+    if(['admin, superadmin'].includes(user.role)) {
+      return res.status(403).json({
+        success:false,
+        message:'Admin accounts cannot apply to become sellers',
+      });
+    }
+
     const { storeName, storeDescription, storeAddress, bankDetails } = req.body;
 
     user.sellerStatus                   = 'pending';
@@ -510,6 +518,22 @@ export const applyForAdmin = async (req, res, next) => {
 
     if (user.adminStatus === 'pending') {
       return res.status(400).json({ success: false, message: 'Your admin application is already pending review' });
+    }
+
+    //GUARD: Sellers cannot apply for admin
+    if(user.role === 'seller') {
+      return res.status(403).json({
+        success:false,
+        message:'Seller accounts cannot apply to become admins',
+      });
+    }
+
+    //GUARD:Cannot hold a pending seller application and apply for admin
+    if(user.sellerStatus === 'pending') {
+      return res.status(400).json({
+        success:false,
+        message:'You have a pending seller application. Withdraw it before applying for admin.',
+      });
     }
 
     user.adminStatus = 'pending';

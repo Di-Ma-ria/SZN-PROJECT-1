@@ -3,14 +3,34 @@ import { Product } from '../models/productModel.js';
 
 export const getWishlist = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id)
-      .populate({
-        path: 'wishlist',
-        populate: { path: 'category', select: 'name slug' },
-      })
-      .select('wishlist');
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+    const skip = (page -1)*limit;
 
-    res.status(200).json({ success: true, data: user?.wishlist || [] });
+    //Pull the raw IDs first so we know the total without fetching all products
+    const userDoc = await User.findById(req.user._id).select('wishlist');
+    if(!userDoc) {
+      return res.status(404).json({
+        success:false,
+        message:'User not found'
+      });
+    }
+
+    const total = userDoc.wishlist.length;
+    const pageIds = userDoc.wishlist.slice(skip, skip + limit);
+
+    //populate only the current page slice
+    const products =await Product.find({_id:{$in: pageIds}, status:'active'})
+    .populate('category', 'name slug')
+    .sort({createdAt: -1});
+
+    res.status(200).json({
+      success:true,
+      total,
+      page,
+      totalPages:Math.ceil(total/limit),
+      data: products,
+    })
   } catch (error) {
    next(error);
   }

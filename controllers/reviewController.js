@@ -35,6 +35,14 @@ export const addReview = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
+    //GUARD:Seller cannot review their own products
+    if(product.seller.toString() === req.user._id.toString()) {
+      return res.status(403).json({
+        success:false,
+        message:'You cannot review your own product',
+      });
+    }
+
     const existingReview = await Review.findOne({ product: productId, user: req.user._id });
     if (existingReview) {
       return res.status(400).json({ success: false, message: 'You already reviewed this product' });
