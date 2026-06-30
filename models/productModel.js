@@ -129,23 +129,7 @@ productSchema.index({
     brand:'text'
 });
 
-//auto-generate slug from name before saving
-// productSchema.pre('save', function(next) {
-//     if(this.isModified('name')) {
-//         this.slug = slugify(this.name, {lower:true, strict:true});
-//     }
-//     next();
-// });
 
-// //auto-generate slug on update too
-// productSchema.pre('findOneAndUpdate', function(next) {
-//     const update = this.getUpdate();
-//     if(update.name) {
-//         update.slug = slugify(update.name, {lower:true, strict:true});
-//     }
-//     next();
-// });
-//  Auto-generate slug with duplicate handling on save
 productSchema.pre('save', async function(next) {
   if (!this.isModified('name')) return next();
 

@@ -4,7 +4,7 @@ import { Product } from '../models/productModel.js';
 
 export const getCart = async (req, res, next) => {
   try{
-    let cart = await Cart.findOne({user: req.user.id}).populate('items.product', 'name price salePrice images stock isActive brand');
+    let cart = await Cart.findOne({user: req.user._id}).populate('items.product', 'name price salePrice images stock isActive brand');
 
     if(!cart){
       return res.json({
@@ -31,14 +31,20 @@ export  const addToCart = async (req, res, next) => {
 
     const product = await Product.findOne({
       _id: productId,
-      isDeleted: false,
-      isActive: true,
+      status:'active',
     });
 
     if(!product) {
       return res.status(404).json({
         success: false,
         message: 'Product not found or unavailable',
+      });
+    }
+    // GUARD: Seller cannot buy their own products
+    if(product.seller.toString()=== req.user._id.toString()) {
+      return res.status(403).json({
+        success:false,
+        message:'You cannot add your own product to your cart',
       });
     }
 // this checks for the available stocks
@@ -51,9 +57,9 @@ export  const addToCart = async (req, res, next) => {
 
     //this finds or creates cart
 
-    let cart = await Cart.findOne({user: req.user.id});
+    let cart = await Cart.findOne({user: req.user._id});
     if(!cart){
-      cart = new Cart({user: req.user.id, items: []});
+      cart = new Cart({user: req.user._id, items: []});
     }
 
     //this uses sale price if available, otherwise regular price
@@ -70,7 +76,7 @@ export  const addToCart = async (req, res, next) => {
       if(newQuantity > product.stock) {
         return res.status(400).json({
           success: false,
-          message: `Cannot add more. Only ${product.stock}in stock and you already have ${existingItem.quantity} in your cart`,
+          message: `Cannot add more. Only ${product.stock} in stock and you already have ${existingItem.quantity} in your cart`,
         });
       }
 
@@ -106,7 +112,7 @@ export const updateCartItem = async (req, res, next) => {
     const {quantity} = req.body;
     const {productId} = req.params;
 
-    const cart = await Cart.findOne({user: req.user.id});
+    const cart = await Cart.findOne({user: req.user._id});
     if(!cart) {
       return res.status(404).json({
         success: false,
@@ -120,13 +126,13 @@ export const updateCartItem = async (req, res, next) => {
     if(!item) {
       return res.status(404).json({
         success: false,
-        mesaage: 'Item not found in cart',
+        message: 'Item not found in cart',
       });
     }
 
 
     //check stock
-    const product = await product.findById(productId);
+    const product = await Product.findById(productId);
     if(product && quantity > product.stock) {
       return res.status(400).json({
         success: false,
@@ -155,7 +161,7 @@ export const removeFromCart = async (req, res, next) => {
   try{
     const  {productId} =req.params;
     
-    const cart = await Cart.findOne({user: req.user.id});
+    const cart = await Cart.findOne({user: req.user._id});
     if(!cart) {
       return res.status(404).json({
         success: false,
@@ -196,7 +202,7 @@ export const removeFromCart = async (req, res, next) => {
 
 export const clearCart = async (req, res, next) => {
   try{
-    const cart = await Cart.findOne({user: req.user.id});
+    const cart = await Cart.findOne({user: req.user._id});
     if(!cart) {
       return res.status(404).json({
         success: false,

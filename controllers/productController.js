@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { Product } from '../models/productModel.js';
-import cloudinary from '../config/couldinary.js';
+import cloudinary from '../config/cloudinary.js';
 
 
 //PUBLIC ENDPOINTS (No Auth Required)
@@ -159,7 +159,7 @@ export const getAllProducts = async (req, res, next) => {
 export const getSingleProduct = async (req, res, next) => {
   try {
     const product = await Product.findOne({
-      $or: [{ _id: req.params.id }, { slug: req.params.id }],
+      $or: [{ _id: req.params._id }, { slug: req.params._id }],
       status: 'active',
     })
       .populate('seller', 'name email')
@@ -343,7 +343,7 @@ export const getDeals = async (req, res, next) => {
 // Get related products — same category, excluding current product
 export const getRelatedProducts = async (req, res, next) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params._id);
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
 
     const related = await Product.find({
@@ -440,14 +440,23 @@ export const createProduct = async (req, res, next) => {
     const product = await Product.create({
       ...req.body,
       seller: req.user._id,
-      productType: isAdmin ? 'own' : 'marketplace',
-      status: isAdmin ? 'active' : 'pending',
       images: req.uploadedImages || [],
     });
 
+    //Better logic: allow override via req.body, fallback to default
+    if(isAdmin) {
+      product.status = req.body.status || 'active';
+      product.productType = req.body.productType || 'own';
+    }else {
+      product.status = req.body.status || 'pending';
+      product.productType = 'marketplace'; // sellers can't set productType
+    }
+
+    const productData = await Product.create(product)
+
     return res.status(201).json({
       success: true,
-      data: product,
+      data: productData,
     });
   } catch (error) {
     next(error);
@@ -495,7 +504,7 @@ export const getMyProductStats = async (req, res, next) => {
 
 export const getProductAnalytics = async (req, res, next) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params._id);
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
@@ -520,7 +529,7 @@ export const getProductAnalytics = async (req, res, next) => {
 // UPDATE PRODUCT
 export const updateProduct = async (req, res, next) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params._id);
     if (!product) {
       return res.status(404).json({
         success: false,
@@ -553,7 +562,7 @@ export const updateProduct = async (req, res, next) => {
     }
 
     const updated = await Product.findByIdAndUpdate(
-      req.params.id,
+      req.params._id,
       updatedData,
       { new: true, runValidators: true }
     );
@@ -570,7 +579,7 @@ export const updateProduct = async (req, res, next) => {
 // Add more images to an existing product
 export const addProductImages = async (req, res, next) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params._id);
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
 
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
@@ -602,7 +611,7 @@ export const removeProductImage = async (req, res, next) => {
     const { imageUrl } = req.body;
     if (!imageUrl) return res.status(400).json({ success: false, message: 'imageUrl is required' });
 
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params._id);
     if (!product) return res.status(404).json({ 
       success: false, 
       message: 'Product not found' 
@@ -648,7 +657,7 @@ export const removeProductImage = async (req, res, next) => {
 // DELETE PRODUCT
 export const deleteProduct = async (req, res, next) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params._id);
     if (!product) {
       return res.status(404).json({
         success: false,
@@ -765,7 +774,7 @@ export const updateProductStatus = async (req, res, next) => {
 // Feature or unfeature a product
 export const toggleFeaturedProduct = async (req, res, next) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params._id);
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
 
     product.isFeatured = !product.isFeatured;

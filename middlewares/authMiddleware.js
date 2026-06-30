@@ -76,3 +76,15 @@ export const authMiddleware = async (req, res, next) => {
     next(error);
   }
 };
+
+
+//Use it in any route that requires a verified email(orders and payment)
+export const requireVerified = (req, res, next)=>{
+  if(!req.user.isVerified) {
+    return res.status(403).json({
+      success:false,
+      message:'Please verify your email address before placing orders. Check your inbox or request a new OTP.',
+    });
+  }
+  next();
+};
