@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { Product } from '../models/productModel.js';
-import cloudinary from '../config/couldinary.js';
+import cloudinary from '../config/cloudinary.js';
 
 
 //PUBLIC ENDPOINTS (No Auth Required)
