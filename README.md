@@ -1,167 +1,205 @@
-# MarketSquare E-Commerce API
+# SZN Marketplace Backend
 
-A complete E-Commerce REST API built with Node.js, Express and MongoDB.
+## Overview
 
-## Live URL
+SZN Marketplace Backend is a RESTful API built with Node.js, Express.js, and MongoDB for a multi-vendor e-commerce platform.
 
-https://YOUR-APP-NAME.onrender.com
+The platform supports three user roles:
 
-## Description
+- **Super Admin** – Full control of the system.
+- **Admin** – Manages products, approves sellers, and oversees marketplace operations.
+- **Seller** – Customer who applied and was approved by admin, lists marketplace products.
+- **Customer** - Default registration role; can purchase and apply to become a seller.
 
-MarketSquare is an E-Commerce backend API that allows customers to browse
-products, add to cart, place orders and make payments online.
-Sellers can list products and admins can manage the entire platform.
+---
 
-## Tech Stack
+## Prerequisites
 
 - Node.js
-- Express.js
-- MongoDB and Mongoose
-- JWT Authentication
-- Paystack Payment
-- Nodemailer Emails
-- Cloudinary Image Upload
-- Joi Validation
+- MongoDB Atlas cluster
+- Cloudinary account (free tier works for development)
+- Paystack account with test keys
+- An SMTP email provider (Gmail App Password recommended for dev)
 
-## How to Install and Run
+---
 
-Step 1 - Clone the project
-git clone https://github.com/YOUR-GITHUB-USERNAME/YOUR-REPO-NAME.git
+## Installation
 
-Step 2 - Go into the project folder
-cd YOUR-REPO-NAME
+Clone the repository
 
-Step 3 - Install packages
+```
+git clone <repository_url>
+```
+
+Install dependencies
+
+```
 npm install
+```
 
-Step 4 - Create your .env file
-cp .env.example .env
-Then fill in your credentials
+Start the development server
 
-Step 5 - Start the server
-npm run dev
+```
+npm run start
+```
 
-Step 6 - Server runs on
-http://localhost:5000
+---
 
-## Environment Variables Needed
+## Environment Setup
 
-PORT=5000
-NODE_ENV=development
-MONGO_URI=your mongodb connection string
-JWT_SECRET=any long random text
-JWT_EXPIRES_IN=10m
-JWT_REFRESH_SECRET=any long random text
-JWT_REFRESH_EXPIRES_IN=7d
-EMAIL_HOST=sandbox.smtp.mailtrap.io
-EMAIL_PORT=587
-EMAIL_USER=your mailtrap username
-EMAIL_PASS=your mailtrap password
-PAYSTACK_SECRET_KEY=your paystack secret key
-CLOUDINARY_CLOUD_NAME=your cloudinary cloud name
-CLOUDINARY_API_KEY=your cloudinary api key
-CLOUDINARY_API_SECRET=your cloudinary api secret
-CLIENT_URL=http://localhost:3000
+create a .env in the project root (see .env.example for all required variables). Never commit this file - it is already listed in .gitignore.
 
-## API Endpoints
+## Seed the SuperAdmin
 
-### Auth Routes
+Run this once after your first deployment to create the superadmin account from your .env values.
 
-- POST /api/auth/register - Create account
-- POST /api/auth/login - Login
-- GET /api/auth/me - Get my profile
-- POST /api/auth/forgot-password - Forgot password
-- POST /api/auth/reset-password - Reset password
-- POST /api/auth/otp/send - Send OTP
-- POST /api/auth/otp/verify - Verify OTP
-- POST /api/auth/logout - Logout
+## Running the Server
 
-### Product Routes
+npm start - starts with nodemon
+The server starts on the PORT defined in .env (default:6000). Visit http://localhost:6000 to confirm it is running.
 
-- GET /api/products - Get all products
-- GET /api/products/:id - Get one product
-- GET /api/products/search - Search products
-- POST /api/products - Create product (Seller)
-- PATCH /api/products/:id - Update product (Seller)
-- DELETE /api/products/:id - Delete product (Seller)
+## Paystack Webhook Setup
 
-### Category Routes
+In your paystack dashboard go to settings-> Webhooks and add:
+https://<your-domain>/api/payments/webhook
+For local development use ngrok:
+-then paste the ngrok HTTPS url into paystack dashboard
 
-- GET /api/categories - Get all categories
-- POST /api/categories - Create category (Admin)
-- PATCH /api/categories/:id - Update category (Admin)
-- DELETE /api/categories/:id - Delete category (Admin)
+## Features
 
-### Cart Routes
+### Authentication
 
-- GET /api/cart - View cart
-- POST /api/cart/add - Add to cart
-- PATCH /api/cart/update/:productId - Update quantity
-- DELETE /api/cart/remove/:productId - Remove item
-- DELETE /api/cart/clear - Clear cart
+- User Registration
+- Login
+- Logout
+- JWT Authentication
+- Password Reset
+- OTP Verification
 
-### Order Routes
+### Users
 
-- POST /api/orders - Place order
-- GET /api/orders/my-orders - My orders
-- GET /api/orders/:id - Single order
-- PATCH /api/orders/:id/cancel - Cancel order
-- GET /api/orders - All orders (Admin)
-- PATCH /api/orders/:id/status - Update status (Admin)
+- User Profile
+- Update Profile
+- Delete Account
+- Role Management
 
-### Payment Routes
+### Products
 
-- POST /api/payments/initialize - Start payment
-- GET /api/payments/verify/:reference - Verify payment
-- POST /api/payments/webhook - Paystack webhook
-- GET /api/payments - Payment history (Admin)
+- Create Product
+- Update Product
+- Delete Product
+- Get Product
+- Get All Products
+- Product Categories
+- Product Images (Cloudinary)
 
-### Coupon Routes
+### Categories
 
-- POST /api/coupons/validate - Validate coupon
-- POST /api/coupons - Create coupon (Admin)
-- GET /api/coupons - All coupons (Admin)
-- DELETE /api/coupons/:id - Delete coupon (Admin)
+- Create Category
+- Update Category
+- Delete Category
+- View Categories
 
-### Inventory Routes
+### Cart
 
-- GET /api/inventory - All inventory (Admin)
-- GET /api/inventory/low-stock - Low stock alerts (Admin)
-- PATCH /api/inventory/:productId/restock - Restock (Admin)
+- Add to Cart
+- Update Cart
+- Remove Item
+- Clear Cart
 
-### Review Routes
+### Wishlist
 
-- GET /api/reviews/product/:productId - Get reviews
-- POST /api/reviews/product/:productId - Add review
-- DELETE /api/reviews/:reviewId - Delete review
+- Add to Wishlist
+- Remove from Wishlist
+- View Wishlist
 
-### Wishlist Routes
+### Reviews
 
-- GET /api/wishlist - Get wishlist
-- POST /api/wishlist/:productId - Add or remove
+- Create Review
+- Update Review
+- Delete Review
+- Product Ratings
 
-## How to Use the API
+### Coupons
 
-1. Register an account using POST /api/auth/register
-2. Login using POST /api/auth/login
-3. Copy the accessToken from the response
-4. Add it to your request header like this:
-   Key: Authorization
-   Value: Bearer YOUR_TOKEN_HERE
-5. Now you can access protected routes
+- Create Coupons
+- Apply Coupons
+- Validate Coupons
 
-## User Roles
+### Orders
 
-- customer - can shop, cart, orders, reviews, wishlist
-- seller - can do everything customer can plus manage products
-- admin - can manage everything on the platform
-- superadmin - has full access including managing admins
+- Create Order
+- View Orders
+- Update Order Status
+- Cancel Order
 
-## API Documentation
+### Inventory
 
-Link: YOUR POSTMAN COLLECTION LINK HERE
+- Stock Management
+- Stock Updates
 
-## Team Members
+### Payments
 
-- DIMARIA - Backend Developer
-- LOTA - Backend Developer
+- Payment Verification
+- Payment Processing
+
+---
+
+## Folder Structure
+
+```
+config/
+controllers/
+middlewares/
+models/
+routes/
+seed/
+utils/
+validation/
+server.js
+```
+
+---
+
+## API Modules
+
+- Authentication
+- Users
+- Products
+- Categories
+- Cart
+- Wishlist
+- Reviews
+- Coupons
+- Orders
+- Inventory
+- Payments
+
+---
+
+## Security
+
+- JWT Authentication
+- Password Hashing
+- Protected Routes
+- Admin Authorization
+- Input Validation
+- Centralized Error Handling
+- Helmet Security Headers
+- Rate Limiting
+
+---
+
+## Request Auth
+
+All protected emdpoints require a bearer token in the Authorization header. Access Tokens expire in JWT_EXPIRES_IN (default 10 minutes). use the refresh token cookie to obtain a new access token.
+
+---
+
+## Image Uploads
+
+Product images endpoints accept multipart/form-data with the field name images. Up to 20 images per request,max 5MB each. Accepted formats:JPEG, PNG, WEBP.
+
+## License
+
+This project is intended for educational and portfolio purposes.

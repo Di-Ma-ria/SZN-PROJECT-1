@@ -7,6 +7,7 @@ import {Coupon} from '../models/couponModel.js';
 import {User} from '../models/userModel.js';
 
 import { sendTemplateEmail } from '../utils/sendEmail.js';
+import { Product } from '../models/productModel.js';
 
 
 // internal: deduct inventory
@@ -41,6 +42,54 @@ export const placeOrder = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: 'Order must have at least one item'
+      });
+    }
+    //Guard: Seller cannot order thir own products
+    for (const item of items) {
+      const product = await Product.findById(item.product).select('seller');
+      if(product && product.seller.toString()=== req.user._id.toString()) {
+        return res.status(403).json({
+          success:false,
+          message:`You cannot purchase your own product: "${item.name}"`,
+        });
+      }
+    }
+
+    //GUARD: re-validate item price against our current product prices
+    const priceChangedItems = [];
+
+    for(const item of items) {
+      const product = await Product.findById(item.product).select('baseprice discountPercentage status name');
+
+      if(!product || product.status !=='active') {
+        return res.status(400).json({
+          success:false,
+          message:`"${item.name}" is no longer available`,
+        });
+      }
+
+      //calculate current effective price (apply discount if set)
+      const currentPrice =
+      product.discountPercentage >0
+      ? product.basePrice * (1- product.discountPercentage/100)
+      : product.basePrice;
+
+      const priceDiff = Math.abs(currentPrice - item.price);
+      //allow a small floating-point tolerance(1 kobo)
+      if(priceDiff >0.01) {
+        priceChangedItems.push({
+          name: item.name,
+          oldprice: item.price,
+          newPrice:Number(currentPrice.tofixed(2)),
+        });
+      }
+    }
+
+    if(priceChangedItems.length >0) {
+      return res.status(409).json({
+        success:false,
+        message:'Some item prices have changed since you added them to your cart. Please review your cart.',
+        priceChangedItems,
       });
     }
 
@@ -138,7 +187,7 @@ return res.json({
 
 export const getSingleOrder = async (req, res, next) => {
   try{
-    const order = await Order.findById(req.params.id)
+    const order = await Order.findById(req.params._id)
       .populate('customer', 'name email phone')
       .populate('items.product', 'name images');
 
@@ -206,7 +255,7 @@ export const updateOrderStatus = async (req, res, next) => {
   try{
     const {status} = req.body;
 
-    const order = await Order.findById(req.params.id).populate('customer', 'name email');
+    const order = await Order.findById(req.params._id).populate('customer', 'name email');
     if(!order){
       return res.status(404).json({
         success: false,
@@ -249,7 +298,7 @@ export  const cancelOrder = async (req, res, next) => {
   try{
     const {reason} = req.body;
 
-    const order = await Order.findById(req.params.id).populate('customer', 'name email');
+    const order = await Order.findById(req.params._id).populate('customer', 'name email');
     if(!order){
       return res.status(404).json({
         success: false,
@@ -275,12 +324,25 @@ export  const cancelOrder = async (req, res, next) => {
     });
   }
 
+  if(order.status === 'cancelled') {
+    return res.status(400).json({
+      success:false,
+      message:'This order is already cancelled',
+    });
+  }
+
   //restore stock
   await restoreInventory(order.items);
 
   order.status  ='cancelled';
   order.cancelledAt  = new Date();
   order.cancellationReason  = reason || null;
+
+  // if order was already paid, flag it for admin refund
+  if(order.paymentStatus === 'paid') {
+    order.paymentStatus = 'refund_pending';  //signals admin to process refund
+  }
+
   await order.save();
 
   await sendTemplateEmail(order.customer.email, 'orderCancelled',{
@@ -290,7 +352,10 @@ export  const cancelOrder = async (req, res, next) => {
 
   return res.json({
     success: true,
-    message: 'Order cancelled successfully', order
+    message: order.paymentStatus === 'refund_pending'
+    ? 'Order cancelled. Since you already paid, a refund will be processed by our team shortly.'
+    : 'Order cancelled successfully',
+    order,
   });
   } catch (error) {
     next(error);
