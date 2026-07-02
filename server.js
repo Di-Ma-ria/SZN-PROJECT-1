@@ -1,13 +1,19 @@
 import dotenv from 'dotenv';
+
 dotenv.config();
 
 import express from 'express';
+
 import cors from 'cors';
+
 import helmet from 'helmet';
+
 import {rateLimit} from 'express-rate-limit';
+
 import cookieParser from 'cookie-parser';
 
 import ConnectDb from './config/db.js';
+
 import {errorHandler} from './middlewares/errorHandler.js';
 
 
@@ -47,6 +53,7 @@ app.use('/api/payments/webhook', express.raw ({type: 'application/json'}));
 app.use(helmet());
 
 app.use(express.json());
+
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cors({origin: process.env.CLIENT_URL || '*', credentials: true}));
