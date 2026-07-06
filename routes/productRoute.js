@@ -17,8 +17,9 @@ import {addProductImages,adminGetAllProducts,adminProductStats,
 const ProductRoutes = express.Router();
 
 
-ProductRoutes.get(`/search`, searchProducts)
-ProductRoutes.get(`/suggestions`, getSearchSuggestions )
+ProductRoutes.get(`/search`, searchProducts);
+
+ProductRoutes.get(`/suggestions`, getSearchSuggestions);
 ProductRoutes.get(`/featured`, getFeaturedProducts)
 ProductRoutes.get(`/new-arrivals`, getNewArrivals)
 ProductRoutes.get(`/deals`, getDeals)
@@ -37,8 +38,11 @@ ProductRoutes.patch(`/admin/:id/feature`, authMiddleware,isAdmin, toggleFeatured
 ProductRoutes.get(`/seller/:id/analytics`, authMiddleware, isSeller, getProductAnalytics)
 
 ProductRoutes.get('/', getAllProducts);
-ProductRoutes.post(`/`, compareProducts)
-ProductRoutes.post('/',authMiddleware,isSeller, uploadProductImages,uploadToCloudinary,validate(createProductSchema),createProduct);
+
+ProductRoutes.post('/compare', compareProducts);
+
+ProductRoutes.post('/', authMiddleware, isSeller, uploadProductImages, uploadToCloudinary, validate(createProductSchema), createProduct);
+
 ProductRoutes.get(`/:id/related`, getRelatedProducts)
 ProductRoutes.get('/:id', getSingleProduct);
 ProductRoutes.patch('/:id',authMiddleware,isSeller,uploadProductImages,uploadToCloudinary,validate(updateProductSchema),updateProduct);

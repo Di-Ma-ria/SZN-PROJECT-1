@@ -1,12 +1,12 @@
 import express from 'express';
 
-import { register, logIn, getProfile, updateProfile, changePassword, deleteMyAccount, applyForSeller, applyForAdmin, resendOtp, verifyOtp, sendOtp, resetPassword, forgotPassword, logOut } from '../controllers/authController.js';
+import { register, logIn, getProfile, updateProfile, changePassword, requestAccountDeletion, deleteMyAccount, applyForSeller, applyForAdmin, resendOtp, verifyOtp, sendOtp, resetPassword, forgotPassword, logOut } from '../controllers/authController.js';
 
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
 import validate from '../validation/validate.js';
 
-import {registerSchema,loginSchema,updateProfileSchema,changePasswordSchema,deleteAccountSchema,applyForSellerSchema, forgotPasswordSchema, resetPasswordSchema, sendOtpSchema, verifyOtpSchema} from '../validation/authValidation.js';
+import {registerSchema,loginSchema,updateProfileSchema,changePasswordSchema,deleteAccountSchema, confirmDeleteSchema, applyForSellerSchema, forgotPasswordSchema, resetPasswordSchema, sendOtpSchema, verifyOtpSchema} from '../validation/authValidation.js';
 
 const authRoutes = express.Router();
 
@@ -34,7 +34,11 @@ authRoutes.patch('/update',   authMiddleware, validate(updateProfileSchema),  up
 
 authRoutes.patch('/password', authMiddleware, validate(changePasswordSchema), changePassword);
 
-authRoutes.delete('/delete-my-account', authMiddleware, validate(deleteAccountSchema), deleteMyAccount);
+
+authRoutes.post('/request-delete', authMiddleware, validate(deleteAccountSchema), requestAccountDeletion);
+
+
+authRoutes.delete('/delete-my-account',authMiddleware, validate(confirmDeleteSchema),deleteMyAccount);
 
 authRoutes.post('/apply-seller', authMiddleware, validate(applyForSellerSchema), applyForSeller);
 

@@ -130,25 +130,6 @@ productSchema.index({
 });
 
 
-productSchema.pre('save', async function(next) {
-  if (!this.isModified('name')) return next();
-
-  let baseSlug = slugify(this.name, { lower: true, strict: true });
-  let slug = baseSlug;
-  let counter = 1;
-
-  while (await mongoose.model('Product').findOne({
-    slug,
-    _id: { $ne: this._id }
-  })) {
-    slug = `${baseSlug}-${counter}`;
-    counter++;
-  }
-
-  this.slug = slug;
-  next();
-});
-
 
 
 //
