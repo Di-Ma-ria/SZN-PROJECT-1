@@ -76,7 +76,6 @@ export const registerSchema = Joi.object({
 
 
 
-
 // LOGIN
 
 export const loginSchema = Joi.object({
@@ -151,7 +150,6 @@ export const updateProfileSchema = Joi.object({
 
 
 
-
   //change password
 
 export const changePasswordSchema = Joi.object({
@@ -181,6 +179,19 @@ export const changePasswordSchema = Joi.object({
 });
 
 
+
+
+// Confirm delete — user enters OTP
+export const confirmDeleteSchema = Joi.object({
+  otp: Joi.string()
+  .length(6)
+  .required()
+  .messages({
+    'string.length': 'OTP must be 6 digits',
+    'any.required':  'OTP is required',
+    'string.empty':  'OTP cannot be empty',
+  }),
+});
 
 // delete own account 
 
@@ -244,13 +255,18 @@ export const applyForSellerSchema = Joi.object({
     .messages({ 'any.required': 'Bank name is required'}),
 
 
-    accountNumber: Joi.string().required().messages({ 'any.required': 'Account number is required' }),
+    accountNumber: Joi.string()
+    .required()
+    .messages({ 'any.required': 'Account number is required' }),
 
-    accountName:   Joi.string().required().messages({ 'any.required': 'Account name is required' }),
+    accountName:   Joi.string()
+    .required()
+    .messages({ 'any.required': 'Account name is required' }),
 
   })
   .required().messages({ 'any.required': 'Bank details are required' }),
 });
+
 
 export const sendOtpSchema = Joi.object({
   email: Joi.string().email().required().messages({
@@ -258,35 +274,45 @@ export const sendOtpSchema = Joi.object({
     'any.required': 'Email is required',
   }),
   purpose: Joi.string()
-    .valid('email-verification', 'password-reset')
+    .valid('email-verification', 'password-reset', 'account-deletion')
     .required()
     .messages({
-      'any.only':     "Purpose must be 'email-verification' or 'password-reset'",
+      'any.only': "Purpose must be 'email-verification', 'password-reset' or 'account-deletion'",
       'any.required': 'Purpose is required',
     }),
 });
 
+
 export const verifyOtpSchema = Joi.object({
-  email: Joi.string().email().required().messages({
+  email: Joi.string()
+  .email().required()
+  .messages({
     'string.email': 'Please provide a valid email address',
     'any.required': 'Email is required',
   }),
-  otp: Joi.string().length(6).required().messages({
+  otp: Joi.string()
+  .length(6)
+  .required()
+  .messages({
     'string.length': 'OTP must be 6 digits',
     'any.required':  'OTP is required',
     'string.empty':  'OTP cannot be empty',
   }),
   purpose: Joi.string()
-    .valid('email-verification', 'password-reset')
+    .valid('email-verification', 'password-reset', 'account-deletion')
     .required()
     .messages({
-      'any.only':     "Purpose must be 'email-verification' or 'password-reset'",
+      'any.only': "Purpose must be 'email-verification', 'password-reset' or 'account-deletion'",
       'any.required': 'Purpose is required',
     }),
 });
 
+
 export const forgotPasswordSchema = Joi.object({
-  email: Joi.string().email().required().messages({
+  email: Joi.string()
+  .email()
+  .required()
+  .messages({
     'string.email': 'Please provide a valid email address',
     'any.required': 'Email is required',
     'string.empty': 'Email cannot be empty',
@@ -294,7 +320,10 @@ export const forgotPasswordSchema = Joi.object({
 });
 
 export const resetPasswordSchema = Joi.object({
-  email: Joi.string().email().required().messages({
+  email: Joi.string()
+  .email()
+  .required()
+  .messages({
     'string.email': 'Please provide a valid email address',
     'any.required': 'Email is required',
   }),

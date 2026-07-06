@@ -255,30 +255,125 @@ export const changePassword = async (req, res, next) => {
 
 //DELETE MY ACCOUNT 
 
-export const deleteMyAccount = async (req, res, next) => {
+// ─── STEP 1: REQUEST ACCOUNT DELETION ────────────────────────
+// User confirms password → OTP is sent to email
+export const requestAccountDeletion = async (req, res, next) => {
   try {
     const { password } = req.body;
 
     const user = await User.findById(req.user._id).select('+password');
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
     }
 
+    // Confirm password first
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Incorrect password' });
+      return res.status(401).json({
+        success: false,
+        message: 'Incorrect password',
+      });
     }
 
-    // soft delete — blocks login but preserves data
-    user.isDeleted = true;
-    user.deletedAt = Date.now();
-    await user.save();
+    // Delete any existing OTP for this purpose
+    await OTP.deleteMany({ email: user.email, purpose: 'account-deletion' });
 
-    return res.json({ success: true, message: 'Your account has been deleted successfully' });
+    // Generate and send OTP
+    const otp = generateOtp();
+    await OTP.create({
+      email: user.email,
+      otp,
+      purpose: 'account-deletion',
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+    });
+
+    await sendTemplateEmail(user.email, 'accountDeletion', {
+      name: user.name,
+      otp,
+    });
+
+    return res.json({
+      success: true,
+      message: 'OTP sent to your email. Please verify to complete account deletion.',
+    });
   } catch (error) {
     next(error);
   }
 };
+
+// STEP 2: CONFIRM ACCOUNT DELETION 
+// User enters OTP → account is deleted
+export const deleteMyAccount = async (req, res, next) => {
+  try {
+    const { otp } = req.body;
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Find the OTP record
+    const record = await OTP.findOne({
+      email: user.email,
+      purpose: 'account-deletion',
+      verified: false,
+    });
+
+    if (!record) {
+      return res.status(400).json({
+        success: false,
+        message: 'OTP not found. Please request account deletion again.',
+      });
+    }
+
+    // Check OTP has not expired
+    if (new Date() > record.expiresAt) {
+      await record.deleteOne();
+      return res.status(400).json({
+        success: false,
+        message: 'OTP has expired. Please request account deletion again.',
+      });
+    }
+
+    // Verify OTP
+    const isOtpValid = await record.compareOtp(otp);
+    if (!isOtpValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid OTP',
+      });
+    }
+
+    // Delete the OTP record
+    await record.deleteOne();
+
+    // Soft delete the account
+    user.isDeleted = true;
+    user.deletedAt = Date.now();
+    user.refreshToken = null;
+    await user.save();
+
+    // Clear the cookie
+    res.clearCookie('refreshToken');
+
+    return res.json({
+      success: true,
+      message: 'Your account has been deleted successfully.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+
 
 
 //Send Otp..... used for email-verification and password-reset
@@ -411,47 +506,51 @@ export const forgotPassword = async (req, res, next) => {
 
 //reset password, user enters OTP + new password
 export const resetPassword = async (req, res, next) => {
-  try{
+  try {
     const { email, otp, newPassword } = req.body;
 
-    // check OTP was verified
+    // Find the OTP record
     const record = await OTP.findOne({
-      email, 
+      email,
       purpose: 'password-reset',
     });
 
-    if(!record) {
+    if (!record) {
       return res.status(400).json({
         success: false,
-        message: 'Please verify your OTP first before resetting your password',
+        message: 'OTP not found. Please request a new one.',
       });
     }
 
-    const isOtpValid = await bcrypt.compare(otp, record.otp);
-    if(!isOtpValid || !record.verified){
-      res.status(400).json({
-        success:false,
-        message:"Invalid or Unverified OTP",
-      })
+    // this uses the compareOtp method from otpModel — no bcrypt import needed
+    const isOtpValid = await record.compareOtp(otp);
+
+    //  Added return so code stops here if OTP is wrong
+    if (!isOtpValid || !record.verified) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or unverified OTP',
+      });
     }
 
-    const user = await User.findOne({ email, isDeleted: false}).select('+password');
-    if(!user){
+    const user = await User.findOne({ email, isDeleted: false }).select('+password');
+    if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: 'User not found',
       });
     }
 
-    user.password = newPassword; // pre-save hook hashes it
+    // pre-save hook hashes the new password
+    user.password = newPassword;
     await user.save();
 
-    //Delete used OTP record
+    // Delete the used OTP record
     await record.deleteOne();
 
     return res.json({
       success: true,
-      message: 'Password reset successfully. Please log in.'
+      message: 'Password reset successfully. Please log in.',
     });
   } catch (error) {
     next(error);
@@ -477,7 +576,7 @@ export const applyForSeller = async (req, res, next) => {
     }
 
     //GUARD: Admins and superadmins cannot apply to be sellers
-    if(['admin, superadmin'].includes(user.role)) {
+    if(['admin', 'superadmin'].includes(user.role)) {
       return res.status(403).json({
         success:false,
         message:'Admin accounts cannot apply to become sellers',

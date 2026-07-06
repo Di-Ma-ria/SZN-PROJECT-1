@@ -7,7 +7,7 @@ import{User} from '../models/userModel.js';
 import { Inventory } from '../models/inventoryModel.js';
 
 import {sendTemplateEmail} from '../utils/sendEmail.js';
-import { rmSync } from 'fs';
+//import { rmSync } from 'fs';
 
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;

@@ -130,7 +130,10 @@ productSchema.index({
 });
 
 
-productSchema.pre('save', async function(next) {
+
+
+//
+productSchema.pre('save', async function (next) {
   if (!this.isModified('name')) return next();
 
   let baseSlug = slugify(this.name, { lower: true, strict: true });
@@ -149,8 +152,9 @@ productSchema.pre('save', async function(next) {
   next();
 });
 
-// Auto-generate slug with duplicate handling on update
-productSchema.pre('findOneAndUpdate', async function(next) {
+// to update
+
+productSchema.pre('findOneAndUpdate', async function (next) {
   const update = this.getUpdate();
   if (update.name) {
     let baseSlug = slugify(update.name, { lower: true, strict: true });

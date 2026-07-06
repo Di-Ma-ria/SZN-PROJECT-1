@@ -15,7 +15,7 @@ const otpSchema = new mongoose.Schema({
 
   purpose: {
     type: String,
-    enum: ['email-verification', 'password-reset'],
+    enum: ['email-verification', 'password-reset','account-deletion'],
     required: true,
   },
   expiresAt: {
@@ -32,9 +32,10 @@ const otpSchema = new mongoose.Schema({
 
 
 //Hash OTP before saving - same security as passwords
-otpSchema.pre('save', async function (){
-  if(!this.isModified('otp')) return;
+otpSchema.pre('save', async function (next){
+  if(!this.isModified('otp')) return next();
   this.otp = await bcryptjs.hash(this.otp, 10);
+  next();
 });
 
 otpSchema.methods.compareOtp = async function (candidateOtp) {
