@@ -388,7 +388,7 @@ export const demoteAdmin = async (req, res, next) => {
 
 export const deleteUser = async (req, res, next) => {
   try{
-    const user = await User.findById(req.params._id);
+    const user = await User.findById(req.params.id);
     if(!user) {
       return res.status(404).json({
         success: false,

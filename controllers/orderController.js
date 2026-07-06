@@ -59,7 +59,7 @@ export const placeOrder = async (req, res, next) => {
     const priceChangedItems = [];
 
     for(const item of items) {
-      const product = await Product.findById(item.product).select('baseprice discountPercentage status name');
+      const product = await Product.findById(item.product).select('basePrice discountPercentage status name');
 
       if(!product || product.status !=='active') {
         return res.status(400).json({
@@ -80,7 +80,7 @@ export const placeOrder = async (req, res, next) => {
         priceChangedItems.push({
           name: item.name,
           oldprice: item.price,
-          newPrice:Number(currentPrice.tofixed(2)),
+          newPrice:Number(currentPrice.toFixed(2)),
         });
       }
     }
