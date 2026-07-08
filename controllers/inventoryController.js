@@ -151,7 +151,7 @@ export const getLowStockAlerts = async (req, res, next) => {
   }
 };
 
-export const getLowStockProducts = async (req, res) => {
+export const getLowStockProducts = async (req, res, next) => {
   try {
     const { threshold = 10, limit = 50 } = req.query;
 
@@ -164,19 +164,19 @@ export const getLowStockProducts = async (req, res) => {
       .sort({ stock: 1 })
       .limit(Number(limit));
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: products,
     });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 // Update stock for base product (no variants)
-export const updateStock = async (req, res) => {
+export const updateStock = async (req, res, next) => {
   try {
-    const product = await Product.findById(req.params._id);
+    const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
 
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
@@ -192,16 +192,16 @@ export const updateStock = async (req, res) => {
       { new: true }
     );
 
-    res.status(200).json({ success: true, data: updated });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    next(error);
   }
 };
 
 // Update stock for a specific variant
-export const updateVariantStock = async (req, res) => {
+export const updateVariantStock = async (req, res, next) => {
   try {
-    const product = await Product.findById(req.params._id);
+    const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
 
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
@@ -219,8 +219,8 @@ export const updateVariantStock = async (req, res) => {
     variant.stock = req.body.stock;
     await product.save();
 
-    res.status(200).json({ success: true, data: product });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return res.status(200).json({ success: true, data: product });
+  } catch (error) {
+    next(error);
   }
 };

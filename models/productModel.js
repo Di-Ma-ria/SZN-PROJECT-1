@@ -133,8 +133,8 @@ productSchema.index({
 
 
 //
-productSchema.pre('save', async function (next) {
-  if (!this.isModified('name')) return next();
+productSchema.pre('save', async function () {
+  if (!this.isModified('name')) return;
 
   let baseSlug = slugify(this.name, { lower: true, strict: true });
   let slug = baseSlug;
@@ -149,14 +149,14 @@ productSchema.pre('save', async function (next) {
   }
 
   this.slug = slug;
-  next();
 });
 
 // to update
 
-productSchema.pre('findOneAndUpdate', async function (next) {
+productSchema.pre('findOneAndUpdate', async function () {
   const update = this.getUpdate();
-  if (update.name) {
+  if (!update.name) return; 
+
     let baseSlug = slugify(update.name, { lower: true, strict: true });
     let slug = baseSlug;
     let counter = 1;
@@ -169,8 +169,6 @@ productSchema.pre('findOneAndUpdate', async function (next) {
       counter++;
     }
     update.slug = slug;
-  }
-  next();
 });
 
 export const Product = mongoose.model('Product', productSchema);
