@@ -29,10 +29,8 @@ export const uploadToCloudinary = async (req, res, next) => {
 
     req.uploadedImages = await Promise.all(uploadedPromises);
     return next();
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: `Image upload failed: ${error.message}`,
-    });
+
+    } catch (error) {
+    return next(new Error(`Image upload failed: ${error.message}`));
   }
 };

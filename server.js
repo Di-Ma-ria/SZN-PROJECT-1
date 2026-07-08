@@ -8,7 +8,13 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
-// Now import everything else
+import { initCloudinary } from './config/cloudinary.js';
+initCloudinary();
+
+
+
+
+// rest of the imports 
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
