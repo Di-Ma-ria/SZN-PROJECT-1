@@ -46,9 +46,10 @@ import {
 
 const ProductRoutes = express.Router();
 
-
+// ════════════════════════════════════════════════════════════
 // PUBLIC ROUTES — No Auth Required
 // Named routes MUST come before /:id
+// ════════════════════════════════════════════════════════════
 
 ProductRoutes.get('/search',               searchProducts);
 ProductRoutes.get('/suggestions',          getSearchSuggestions);
@@ -60,8 +61,9 @@ ProductRoutes.get('/category/slug/:slug',  getProductsByCategorySlug);
 ProductRoutes.get('/brand/:brand',         getProductsByBrand);
 ProductRoutes.post('/compare',             compareProducts);
 
-
-// SELLER NAMED ROUTES
+// ════════════════════════════════════════════════════════════
+// SELLER NAMED ROUTES — must come before /:id
+// ════════════════════════════════════════════════════════════
 
 ProductRoutes.get(
   '/seller/my-products',
@@ -81,8 +83,9 @@ ProductRoutes.get(
   getProductAnalytics
 );
 
-
-// ADMIN NAMED ROUTES 
+// ════════════════════════════════════════════════════════════
+// ADMIN NAMED ROUTES — must come before /:id
+// ════════════════════════════════════════════════════════════
 
 ProductRoutes.get(
   '/admin/all',
@@ -115,15 +118,17 @@ ProductRoutes.patch(
   toggleFeaturedProduct
 );
 
-
+// ════════════════════════════════════════════════════════════
 // GENERIC ROUTES — come AFTER all named routes
+// ════════════════════════════════════════════════════════════
 
 ProductRoutes.get('/',    getAllProducts);
 ProductRoutes.get('/:id', getSingleProduct);
 ProductRoutes.get('/:id/related', getRelatedProducts);
 
-
+// ════════════════════════════════════════════════════════════
 // SELLER CRUD ROUTES
+// ════════════════════════════════════════════════════════════
 
 ProductRoutes.post(
   '/',
@@ -163,8 +168,7 @@ ProductRoutes.delete(
   deleteProduct
 );
 
-// ─── Stock Update Routes ────
-// Logic is now in the controller — route is clean
+// ─── Stock Update Routes ──────────────────────────────────
 
 ProductRoutes.patch(
   '/:id/stock',

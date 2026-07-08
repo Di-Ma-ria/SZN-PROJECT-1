@@ -646,16 +646,11 @@ export const applyForAdmin = async (req, res, next) => {
     next(error);
   }
 };
-//LOGOUT -invalidates all tokens issued before this moment
-// export const logOut = async(req, res, next)=>{
-//   try{
-//     await User.findByIdAndUpdate(req.user.id, {$inc:{tokenVersion:1} });
-//     return res.json({success:true, message:"Logged out successfully"})
-//   }catch(error){
-//       next(error);
-//   }
-// } 
-export const logOut = async (req, res) => {
+
+//LOGOUt
+
+export const logOut = async (req, res, next) => {
+  try{
   const { refreshToken } = req.cookies;
   if (refreshToken) {
     const user = await User.findOne({ refreshToken });
@@ -666,4 +661,7 @@ export const logOut = async (req, res) => {
   }
   res.clearCookie('refreshToken');
   res.json({ message: 'Logged out' });
+}catch(error){
+  next(error);
+}
 };

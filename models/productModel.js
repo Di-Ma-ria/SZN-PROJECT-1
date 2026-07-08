@@ -131,8 +131,8 @@ productSchema.index({
 
 
 
+// create
 
-//
 productSchema.pre('save', async function () {
   if (!this.isModified('name')) return;
 
@@ -169,6 +169,7 @@ productSchema.pre('findOneAndUpdate', async function () {
       counter++;
     }
     update.slug = slug;
+  
 });
 
 export const Product = mongoose.model('Product', productSchema);

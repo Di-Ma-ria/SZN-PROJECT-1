@@ -3,7 +3,6 @@ import { Product } from '../models/productModel.js';
 import cloudinary from '../config/cloudinary.js';
 
 
-// PUBLIC ENDPOINTS — No Auth Required
 
 // GET ALL PRODUCTS — with filtering, pagination, sorting
 export const getAllProducts = async (req, res, next) => {
@@ -444,22 +443,32 @@ export const compareProducts = async (req, res, next) => {
 };
 
 
-// SELLER ENDPOINTS — Auth + Seller / Admin / Superadmin
-
 // CREATE PRODUCT
 export const createProduct = async (req, res, next) => {
   try {
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
 
-    // Remove server-set fields from req.body
-    // so client cannot override them
     const {
       seller:      _seller,
       images:      _images,
       status:      _status,
       productType: _productType,
+      specs,        // ← pull specs out separately
       ...productData
     } = req.body;
+
+    //Convert specs plain object to Map-compatible format
+    
+    let parsedSpecs;
+    if (specs) {
+      if (typeof specs === 'string') {
+        // sent as JSON string
+        parsedSpecs = new Map(Object.entries(JSON.parse(specs)));
+      } else if (typeof specs === 'object') {
+        // sent as form-data key[value] pairs
+        parsedSpecs = new Map(Object.entries(specs));
+      }
+    }
 
     const product = await Product.create({
       ...productData,
@@ -467,6 +476,7 @@ export const createProduct = async (req, res, next) => {
       images:      req.uploadedImages || [],
       status:      isAdmin ? (req.body.status || 'active') : 'pending',
       productType: isAdmin ? (req.body.productType || 'own') : 'marketplace',
+      ...(parsedSpecs && { specs: parsedSpecs }),
     });
 
     return res.status(201).json({
@@ -571,6 +581,7 @@ export const getProductAnalytics = async (req, res, next) => {
 };
 
 // UPDATE PRODUCT
+
 export const updateProduct = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -591,7 +602,6 @@ export const updateProduct = async (req, res, next) => {
       });
     }
 
-    // Sellers cannot set productType to own
     if (!isAdmin && req.body.productType === 'own') {
       return res.status(403).json({
         success: false,
@@ -599,15 +609,29 @@ export const updateProduct = async (req, res, next) => {
       });
     }
 
-    // If new images uploaded add them to existing
+    // Convert specs the same way
+    const { specs, ...restBody } = req.body;
+
+    let parsedSpecs;
+    if (specs) {
+      if (typeof specs === 'string') {
+        parsedSpecs = new Map(Object.entries(JSON.parse(specs)));
+      } else if (typeof specs === 'object') {
+        parsedSpecs = new Map(Object.entries(specs));
+      }
+    }
+
     const updatedImages =
       req.uploadedImages && req.uploadedImages.length > 0
         ? [...product.images, ...req.uploadedImages]
         : product.images;
 
-    const updatedData = { ...req.body, images: updatedImages };
+    const updatedData = {
+      ...restBody,
+      images: updatedImages,
+      ...(parsedSpecs && { specs: parsedSpecs }),
+    };
 
-    // Sellers need re-approval after any edit
     if (!isAdmin) updatedData.status = 'pending';
 
     const updated = await Product.findByIdAndUpdate(
@@ -874,7 +898,6 @@ export const updateVariantStock = async (req, res, next) => {
 };
 
 
-// ADMIN ENDPOINTS — Admin / Superadmin Only
 
 // GET ALL PRODUCTS — admin sees all statuses
 export const adminGetAllProducts = async (req, res, next) => {
