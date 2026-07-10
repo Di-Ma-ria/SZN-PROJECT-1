@@ -78,14 +78,14 @@ const productSchema = new mongoose.Schema({
     basePrice:{
         type:Number,
         required: function(){
-            return this.variants.length ===0;
+            return !this.variants || this.variants.length ===0;
         },
         min:0,
     },
     stock:{
         type:Number,
         default: function () {
-            return this.variants.length ===0 ? 0: undefined;
+            return !this.variants || this.variants.length ===0 ? 0: undefined;
         },
         min:0,
     },
