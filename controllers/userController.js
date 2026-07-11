@@ -353,6 +353,7 @@ export const makeAdmin  = async (req, res, next) => {
 
 
 // DEMOTE ADMIN (SUPERAMIN ONLY)
+
 export const demoteAdmin = async (req, res, next) => {
   try{
     const user = await User.findById(req.params.id);

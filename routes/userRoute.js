@@ -1,12 +1,7 @@
-// routes/userRoute.js
+// Routes/UserRoute.js
 import express from 'express';
-import {
-  getAllUsers, getSingleUser,
-  getPendingSellers, handleSellerApplication,
-  getPendingAdmins, handleAdminApplication,
-  suspendUser, unsuspendUser,
-  makeAdmin, demoteAdmin, deleteUser,
-} from '../controllers/userController.js';
+
+import {getAllUsers, getSingleUser, getPendingSellers, handleSellerApplication, getPendingAdmins, handleAdminApplication, suspendUser, unsuspendUser, makeAdmin, demoteAdmin, deleteUser } from '../controllers/userController.js';
 
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
@@ -14,26 +9,22 @@ import { isAdmin, isSuperAdmin } from '../middlewares/adminMiddleware.js';
 
 import validate from '../validation/validate.js';
 
-import {
-  handleSellerApplicationSchema,
-  handleAdminApplicationSchema,
-  suspendUserSchema,
-} from '../validation/userValidation.js';
+import {handleSellerApplicationSchema, handleAdminApplicationSchema, suspendUserSchema} from '../validation/userValidation.js';
 
 
 const userRoutes = express.Router();
 
-// admin routes
+// Admin Routes
 userRoutes.get('/all', authMiddleware, isAdmin, getAllUsers);
 
 userRoutes.get('/pending-sellers', authMiddleware, isAdmin, getPendingSellers);
 
 
-// superadmin routes
+// Superadmin Routes
+
 userRoutes.get('/pending-admins', authMiddleware, isSuperAdmin, getPendingAdmins);
 
-//admin route
-
+//Admin Route
 
 userRoutes.patch('/handle-seller/:id', authMiddleware, isAdmin, validate(handleSellerApplicationSchema), handleSellerApplication);
 
@@ -45,7 +36,7 @@ userRoutes.get('/:id', authMiddleware, isAdmin, getSingleUser);
 
 userRoutes.delete('/delete/:id', authMiddleware, isAdmin, deleteUser);
 
-// superadmin routes
+// Superadmin Routes
 
 userRoutes.patch('/handle-admin/:id', authMiddleware, isSuperAdmin, validate(handleAdminApplicationSchema), handleAdminApplication);
 

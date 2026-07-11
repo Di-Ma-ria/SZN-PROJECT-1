@@ -1,5 +1,7 @@
 export const errorHandler = (err, req, res, next) => {
-  // This will show in terminal
+
+  // This will show in terminal if i have an error
+  
   console.error('=== ERROR ===');
   console.error('Message:', err.message);
   console.error('Stack:', err.stack);

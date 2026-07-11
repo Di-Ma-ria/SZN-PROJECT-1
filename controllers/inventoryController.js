@@ -1,9 +1,8 @@
 import { Inventory } from '../models/inventoryModel.js';
+
 import { Product }   from '../models/productModel.js';
 
-// ════════════════════════════════════════════════════════════
 // ADMIN ENDPOINTS — Admin / Superadmin Only
-// ════════════════════════════════════════════════════════════
 
 // GET ALL INVENTORY
 export const getAllInventory = async (req, res, next) => {
@@ -142,7 +141,7 @@ export const getLowStockAlerts = async (req, res, next) => {
   }
 };
 
-// ✅ Fixed — added next parameter
+
 // GET LOW STOCK PRODUCTS — returns product details for low stock items
 export const getLowStockProducts = async (req, res, next) => {
   try {
@@ -164,11 +163,11 @@ export const getLowStockProducts = async (req, res, next) => {
       data:  products,
     });
   } catch (error) {
-    next(error); // ✅ now works — next is declared
+    next(error); // 
   }
 };
 
-// ✅ Fixed — added next parameter
+
 // UPDATE PRODUCT STOCK — seller or admin updates base product stock
 export const updateStock = async (req, res, next) => {
   try {
@@ -211,11 +210,11 @@ export const updateStock = async (req, res, next) => {
       data:    updated,
     });
   } catch (error) {
-    next(error); // ✅ now works — next is declared
+    next(error); 
   }
 };
 
-// ✅ Fixed — added next parameter
+
 // UPDATE VARIANT STOCK — seller or admin updates a specific variant stock
 export const updateVariantStock = async (req, res, next) => {
   try {

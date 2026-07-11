@@ -1,14 +1,13 @@
 import express from 'express';
-import {
-  getAllInventory, getProductInventory,
-  restockProduct, deductStock, getLowStockAlerts,
-  updateStock,
-  updateVariantStock,
-  getLowStockProducts,
-} from '../controllers/inventoryController.js';
+
+import {getAllInventory, getProductInventory, restockProduct, deductStock, getLowStockAlerts, updateStock, updateVariantStock, getLowStockProducts} from '../controllers/inventoryController.js';
+
 import { authMiddleware } from '../middlewares/authMiddleware.js';
+
 import { isAdmin, isSeller }        from '../middlewares/adminMiddleware.js';
+
 import validate from '../validation/validate.js';
+
 import { updateStockSchema } from '../validation/inventoryValidation.js';
 
 const inventoryRoutes = express.Router();

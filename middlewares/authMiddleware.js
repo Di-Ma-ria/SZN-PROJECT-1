@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+
 import { User } from '../models/userModel.js';
 
 export const authMiddleware = async (req, res, next) => {
@@ -79,6 +80,7 @@ export const authMiddleware = async (req, res, next) => {
 
 
 //Use it in any route that requires a verified email(orders and payment)
+
 export const requireVerified = (req, res, next)=>{
   if(!req.user.isVerified) {
     return res.status(403).json({

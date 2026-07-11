@@ -1,12 +1,15 @@
 
 import dotenv from 'dotenv';
+
 import { fileURLToPath } from 'url';
+
 import path from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '.env') });
+
 
 import { initCloudinary } from './config/cloudinary.js';
 initCloudinary();
@@ -15,6 +18,7 @@ initCloudinary();
 
 
 // rest of the imports 
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';

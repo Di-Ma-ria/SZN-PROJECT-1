@@ -1,6 +1,6 @@
 import Joi from 'joi';
 
-//register
+//Register
 
 export const registerSchema = Joi.object({
   name: Joi.string()
