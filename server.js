@@ -1,6 +1,8 @@
 
 import dotenv from 'dotenv';
+
 import { fileURLToPath } from 'url';
+
 import path from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -8,9 +10,6 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
-console.log('=== PAYSTACK DEBUG ===');
-console.log('Key:', process.env.PAYSTACK_SECRET_KEY);
-console.log('======================');
 
 import { initCloudinary } from './config/cloudinary.js';
 initCloudinary();
