@@ -47,7 +47,7 @@ export const placeOrder = async (req, res, next) => {
     //Guard: Seller cannot order thir own products
     for (const item of items) {
       const product = await Product.findById(item.product).select('seller');
-      if(product && product.seller.toString()=== req.user._id.toString()) {
+      if(product && product.seller.toString()=== req.user.id.toString()) {
         return res.status(403).json({
           success:false,
           message:`You cannot purchase your own product: "${item.name}"`,
@@ -120,7 +120,7 @@ await deductInventory(items);
 
 // create order
 const order = await Order.create({
-  customer: req.user._id,
+  customer: req.user.id,
   items,
   shippingAddress,
   subtotal,
@@ -159,7 +159,7 @@ return res.status(201).json({
 export const getMyOrders = async (req, res, next) => {
   try{
     const {status, page = 1, limit =10 } = req.query;
-    const filter = { customer: req.user._id };
+    const filter = { customer: req.user.id };
     if(status) filter.status =status;
 
     const skip = (page -1) * limit;
@@ -187,7 +187,7 @@ return res.json({
 
 export const getSingleOrder = async (req, res, next) => {
   try{
-    const order = await Order.findById(req.params._id)
+    const order = await Order.findById(req.params.id)
       .populate('customer', 'name email phone')
       .populate('items.product', 'name images');
 
@@ -199,7 +199,7 @@ export const getSingleOrder = async (req, res, next) => {
       }
 
       //Customer can only see their own orders
-      if(req.user.role === 'customer' && order.customer._id.toString() !== req.user._id.toString()
+      if(req.user.role === 'customer' && order.customer.id.toString() !== req.user.id.toString()
       ){
     return res.status(403).json({
       success: false, 
@@ -255,7 +255,7 @@ export const updateOrderStatus = async (req, res, next) => {
   try{
     const {status} = req.body;
 
-    const order = await Order.findById(req.params._id).populate('customer', 'name email');
+    const order = await Order.findById(req.params.id).populate('customer', 'name email');
     if(!order){
       return res.status(404).json({
         success: false,
@@ -298,7 +298,7 @@ export  const cancelOrder = async (req, res, next) => {
   try{
     const {reason} = req.body;
 
-    const order = await Order.findById(req.params._id).populate('customer', 'name email');
+    const order = await Order.findById(req.params.id).populate('customer', 'name email');
     if(!order){
       return res.status(404).json({
         success: false,
@@ -309,7 +309,7 @@ export  const cancelOrder = async (req, res, next) => {
     // customer can only cancel their own order
 
   if(
-    req.user.role === 'customer' && order.customer._id.toString() !== req.user._id.toString()
+    req.user.role === 'customer' && order.customer.id.toString() !== req.user.id.toString()
   ){
     return res.status(403).json({
       success: false,
