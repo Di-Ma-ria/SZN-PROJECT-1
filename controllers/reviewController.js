@@ -1,4 +1,5 @@
 import { Review } from '../models/reviewModel.js';
+
 import { Product } from '../models/productModel.js';
 
 const updateProductRating = async (productId) => {
@@ -36,6 +37,7 @@ export const addReview = async (req, res, next) => {
     }
 
     //GUARD:Seller cannot review their own products
+
     if(product.seller.toString() === req.user._id.toString()) {
       return res.status(403).json({
         success:false,

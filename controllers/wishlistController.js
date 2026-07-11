@@ -1,4 +1,5 @@
 import { User } from '../models/userModel.js';
+
 import { Product } from '../models/productModel.js';
 
 export const getWishlist = async (req, res, next) => {
@@ -8,6 +9,7 @@ export const getWishlist = async (req, res, next) => {
     const skip = (page -1)*limit;
 
     //Pull the raw IDs first so we know the total without fetching all products
+
     const userDoc = await User.findById(req.user._id).select('wishlist');
     if(!userDoc) {
       return res.status(404).json({
@@ -20,6 +22,7 @@ export const getWishlist = async (req, res, next) => {
     const pageIds = userDoc.wishlist.slice(skip, skip + limit);
 
     //populate only the current page slice
+
     const products =await Product.find({_id:{$in: pageIds}, status:'active'})
     .populate('category', 'name slug')
     .sort({createdAt: -1});

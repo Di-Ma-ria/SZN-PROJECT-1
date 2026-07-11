@@ -1,7 +1,6 @@
 import express from 'express';
 
-import { createCategory, getAllCategories, getSingleCategory, deleteCategory, updatedCategory,
-} from '../controllers/categoryController.js';
+import { createCategory, getAllCategories, getSingleCategory, deleteCategory, updatedCategory} from '../controllers/categoryController.js';
 
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 

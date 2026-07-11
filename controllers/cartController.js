@@ -1,8 +1,8 @@
 import { Cart }    from '../models/cartModel.js';
+
 import { Product } from '../models/productModel.js';
 
-// ─── GET CART ─────────────────────────────────────────────────
-// GET /api/cart
+// GET CART 
 export const getCart = async (req, res, next) => {
   try {
     const cart = await Cart.findOne({ user: req.user._id })
@@ -25,8 +25,8 @@ export const getCart = async (req, res, next) => {
   }
 };
 
-// ─── ADD TO CART ──────────────────────────────────────────────
-// POST /api/cart/add
+// ADD TO CART 
+
 export const addToCart = async (req, res, next) => {
   try {
     const { productId, quantity = 1 } = req.body;
@@ -110,8 +110,8 @@ export const addToCart = async (req, res, next) => {
   }
 };
 
-// ─── UPDATE CART ITEM QUANTITY ────────────────────────────────
-// PATCH /api/cart/update/:productId
+// UPDATE CART ITEM QUANTITY 
+
 export const updateCartItem = async (req, res, next) => {
   try {
     const { productId } = req.params;
@@ -166,8 +166,8 @@ export const updateCartItem = async (req, res, next) => {
   }
 };
 
-// ─── REMOVE FROM CART ─────────────────────────────────────────
-// DELETE /api/cart/remove/:productId
+//REMOVE FROM CART 
+
 export const removeFromCart = async (req, res, next) => {
   try {
     const { productId } = req.params;
@@ -208,8 +208,8 @@ export const removeFromCart = async (req, res, next) => {
   }
 };
 
-// ─── CLEAR CART ───────────────────────────────────────────────
-// DELETE /api/cart/clear
+// CLEAR CART 
+
 export const clearCart = async (req, res, next) => {
   try {
     const cart = await Cart.findOne({ user: req.user._id });

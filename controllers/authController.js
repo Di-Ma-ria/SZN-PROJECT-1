@@ -255,7 +255,7 @@ export const changePassword = async (req, res, next) => {
 
 //DELETE MY ACCOUNT 
 
-// ─── STEP 1: REQUEST ACCOUNT DELETION ────────────────────────
+// REQUEST ACCOUNT DELETION 
 // User confirms password → OTP is sent to email
 export const requestAccountDeletion = async (req, res, next) => {
   try {
@@ -304,7 +304,7 @@ export const requestAccountDeletion = async (req, res, next) => {
   }
 };
 
-// STEP 2: CONFIRM ACCOUNT DELETION 
+// CONFIRM ACCOUNT DELETION 
 // User enters OTP → account is deleted
 export const deleteMyAccount = async (req, res, next) => {
   try {
@@ -619,7 +619,8 @@ export const applyForAdmin = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Your admin application is already pending review' });
     }
 
-    //GUARD: Sellers cannot apply for admin
+    //Sellers cannot apply for admin
+
     if(user.role === 'seller') {
       return res.status(403).json({
         success:false,
@@ -627,7 +628,8 @@ export const applyForAdmin = async (req, res, next) => {
       });
     }
 
-    //GUARD:Cannot hold a pending seller application and apply for admin
+    //Cannot hold a pending seller application and apply for admin
+    
     if(user.sellerStatus === 'pending') {
       return res.status(400).json({
         success:false,

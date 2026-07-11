@@ -1,18 +1,16 @@
 import mongoose from 'mongoose';
+
 import { Product } from '../models/productModel.js';
+
 import cloudinary from '../config/cloudinary.js';
 
 
 
 // GET ALL PRODUCTS — with filtering, pagination, sorting
+
 export const getAllProducts = async (req, res, next) => {
   try {
-    const {
-      category,
-      brand,
-      minPrice,
-      maxPrice,
-      productType,
+    const {category, brand, minPrice, maxPrice, productType,
       sort = 'newest',
       page = 1,
       limit = 20,
@@ -64,6 +62,7 @@ export const getAllProducts = async (req, res, next) => {
 };
 
 // GET SINGLE PRODUCT — by ID or slug
+
 export const getSingleProduct = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -90,6 +89,7 @@ export const getSingleProduct = async (req, res, next) => {
 };
 
 // SEARCH PRODUCTS — full text search with filters and sorting
+
 export const searchProducts = async (req, res, next) => {
   try {
     const {
@@ -155,6 +155,7 @@ export const searchProducts = async (req, res, next) => {
 };
 
 // SEARCH SUGGESTIONS — quick suggestions as user types
+
 export const getSearchSuggestions = async (req, res, next) => {
   try {
     const query = req.query.q || '';
@@ -183,6 +184,7 @@ export const getSearchSuggestions = async (req, res, next) => {
 };
 
 // GET PRODUCTS BY CATEGORY ID
+
 export const getProductsByCategory = async (req, res, next) => {
   try {
     const { page = 1, limit = 20, sort = 'newest' } = req.query;
@@ -231,6 +233,7 @@ export const getProductsByCategory = async (req, res, next) => {
 };
 
 // GET PRODUCTS BY CATEGORY SLUG
+
 export const getProductsByCategorySlug = async (req, res, next) => {
   try {
     const { page = 1, limit = 20, sort = 'newest' } = req.query;
@@ -279,6 +282,7 @@ export const getProductsByCategorySlug = async (req, res, next) => {
 };
 
 // GET PRODUCTS BY BRAND
+
 export const getProductsByBrand = async (req, res, next) => {
   try {
     const { page = 1, limit = 20, sort = 'newest' } = req.query;
@@ -320,6 +324,7 @@ export const getProductsByBrand = async (req, res, next) => {
 };
 
 // GET FEATURED PRODUCTS
+
 export const getFeaturedProducts = async (req, res, next) => {
   try {
     const { limit = 10 } = req.query;
@@ -337,6 +342,7 @@ export const getFeaturedProducts = async (req, res, next) => {
 };
 
 // GET NEW ARRIVALS
+
 export const getNewArrivals = async (req, res, next) => {
   try {
     const { limit = 10 } = req.query;
@@ -354,6 +360,7 @@ export const getNewArrivals = async (req, res, next) => {
 };
 
 // GET DEALS — products with a discount
+
 export const getDeals = async (req, res, next) => {
   try {
     const { limit = 10 } = req.query;
@@ -374,6 +381,7 @@ export const getDeals = async (req, res, next) => {
 };
 
 // GET RELATED PRODUCTS — same category, excluding current product
+
 export const getRelatedProducts = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -401,6 +409,7 @@ export const getRelatedProducts = async (req, res, next) => {
 };
 
 // COMPARE PRODUCTS — side by side comparison of 2 to 4 products
+
 export const compareProducts = async (req, res, next) => {
   try {
     const { productIds } = req.body;
@@ -490,6 +499,7 @@ export const createProduct = async (req, res, next) => {
 };
 
 // GET MY PRODUCTS — seller views their own products
+
 export const getMyProducts = async (req, res, next) => {
   try {
     const { status, page = 1, limit = 20 } = req.query;
@@ -520,6 +530,7 @@ export const getMyProducts = async (req, res, next) => {
 };
 
 // GET MY PRODUCT STATS — seller dashboard counts
+
 export const getMyProductStats = async (req, res, next) => {
   try {
     const sellerId = req.user._id;
@@ -543,11 +554,13 @@ export const getMyProductStats = async (req, res, next) => {
 };
 
 // GET PRODUCT ANALYTICS — seller or admin views product performance
+
 export const getProductAnalytics = async (req, res, next) => {
   try {
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
 
     // Admin can view any product — seller can only view their own
+
     const query = isAdmin
       ? { _id: req.params.id }
       : { _id: req.params.id, seller: req.user._id };
@@ -610,6 +623,7 @@ export const updateProduct = async (req, res, next) => {
     }
 
     // Convert specs the same way
+
     const { specs, ...restBody } = req.body;
 
     let parsedSpecs;
@@ -651,6 +665,7 @@ export const updateProduct = async (req, res, next) => {
 };
 
 // ADD PRODUCT IMAGES
+
 export const addProductImages = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -702,6 +717,7 @@ export const addProductImages = async (req, res, next) => {
 };
 
 // REMOVE PRODUCT IMAGE
+
 export const removeProductImage = async (req, res, next) => {
   try {
     const { imageUrl } = req.body;
@@ -739,6 +755,7 @@ export const removeProductImage = async (req, res, next) => {
     }
 
     // Delete from Cloudinary
+
     try {
       const urlParts    = imageUrl.split('/');
       const uploadIndex = urlParts.indexOf('upload');
@@ -768,6 +785,7 @@ export const removeProductImage = async (req, res, next) => {
 };
 
 // DELETE PRODUCT
+
 export const deleteProduct = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -789,6 +807,7 @@ export const deleteProduct = async (req, res, next) => {
     }
 
     // Delete all images from Cloudinary before deleting product
+
     for (const imageUrl of product.images) {
       try {
         const urlParts    = imageUrl.split('/');
@@ -814,6 +833,7 @@ export const deleteProduct = async (req, res, next) => {
 };
 
 // UPDATE BASE PRODUCT STOCK ← NEW FUNCTION
+
 export const updateProductStock = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -852,6 +872,7 @@ export const updateProductStock = async (req, res, next) => {
 };
 
 // UPDATE VARIANT STOCK ← NEW FUNCTION
+
 export const updateVariantStock = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -900,6 +921,7 @@ export const updateVariantStock = async (req, res, next) => {
 
 
 // GET ALL PRODUCTS — admin sees all statuses
+
 export const adminGetAllProducts = async (req, res, next) => {
   try {
     const { status, productType, page = 1, limit = 20 } = req.query;
@@ -933,6 +955,7 @@ export const adminGetAllProducts = async (req, res, next) => {
 };
 
 // GET PENDING PRODUCTS — waiting for admin approval
+
 export const getPendingProducts = async (req, res, next) => {
   try {
     const { page = 1, limit = 20 } = req.query;
@@ -961,6 +984,7 @@ export const getPendingProducts = async (req, res, next) => {
 };
 
 // ADMIN PRODUCT STATS — platform wide overview
+
 export const adminProductStats = async (req, res, next) => {
   try {
     const [
@@ -991,6 +1015,7 @@ export const adminProductStats = async (req, res, next) => {
 };
 
 // UPDATE PRODUCT STATUS — admin approves or rejects seller product
+
 export const updateProductStatus = async (req, res, next) => {
   try {
     const { status } = req.body;
@@ -1019,6 +1044,7 @@ export const updateProductStatus = async (req, res, next) => {
 };
 
 // TOGGLE FEATURED — feature or unfeature a product
+
 export const toggleFeaturedProduct = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);

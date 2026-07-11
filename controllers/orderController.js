@@ -7,6 +7,7 @@ import {Coupon} from '../models/couponModel.js';
 import {User} from '../models/userModel.js';
 
 import { sendTemplateEmail } from '../utils/sendEmail.js';
+
 import { Product } from '../models/productModel.js';
 
 
@@ -44,6 +45,7 @@ export const placeOrder = async (req, res, next) => {
         message: 'Order must have at least one item'
       });
     }
+    
     //Guard: Seller cannot order thir own products
     for (const item of items) {
       const product = await Product.findById(item.product).select('seller');

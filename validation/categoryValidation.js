@@ -40,7 +40,7 @@ export const createCategorySchema = Joi.object({
 });
 
 
-// update category
+// Update category
 
 export const updateCategorySchema = Joi.object({
   name: Joi.string()
