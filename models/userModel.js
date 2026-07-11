@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+
 import bcryptjs from 'bcryptjs';
 
 const userSchema = new mongoose.Schema({
@@ -42,6 +43,7 @@ const userSchema = new mongoose.Schema({
   },
 
   // ALL ROLES ADDRESS
+
   address: {
     street: {
       type: String,
@@ -62,6 +64,7 @@ const userSchema = new mongoose.Schema({
   },
 
   // ALL ROLE ACCOUNT STATUS 
+
   isVerified: {
     type: Boolean,
     default: false
@@ -88,6 +91,7 @@ const userSchema = new mongoose.Schema({
   },
 
   // SELLER FIELDS 
+
   sellerStatus: {
     type: String,
     enum: ['none', 'pending', 'approved', 'rejected'],
@@ -139,7 +143,7 @@ const userSchema = new mongoose.Schema({
       average: { type: Number, default: 0 },
       count: { type: Number, default: 0 },
     }
-  }, // <-- This closing brace was missing
+  }, 
 
   // ADMIN FIELD 
   adminStatus: {

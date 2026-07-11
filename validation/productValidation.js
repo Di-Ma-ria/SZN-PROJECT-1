@@ -1,7 +1,8 @@
 import Joi from 'joi';
 
-// ─── Variant Schema ───────────────────────────────────────────
-// Used inside createProductSchema and updateProductSchema
+/* Variant Schema 
+ Used inside createProductSchema and updateProductSchema */
+
 const variantSchema = Joi.object({
   name: Joi.string()
     .required()
@@ -32,13 +33,15 @@ const variantSchema = Joi.object({
       'number.min': 'Variant stock cannot be negative',
     }),
 
-  // — properly typed Map validation
+  // Properly typed Map validation
+
   attributes: Joi.object()
     .pattern(Joi.string(), Joi.string())
     .optional(),
 });
 
-// ─── CREATE PRODUCT ───────────────────────────────────────────
+//  CREATE PRODUCT 
+
 export const createProductSchema = Joi.object({
   name: Joi.string()
     .required()
@@ -83,7 +86,8 @@ export const createProductSchema = Joi.object({
     .items(variantSchema)
     .default([]),
 
-  // basePrice is required only when no variants are provided
+  // BasePrice is required only when no variants are provided
+
   basePrice: Joi.when('variants', {
     is:   Joi.array().min(1),
     then: Joi.number().min(0).optional(),
@@ -116,7 +120,8 @@ export const createProductSchema = Joi.object({
     .pattern(Joi.string(), Joi.string())
     .optional(),
 
-  // — admin can pass status on create
+  //  Admin can pass status on create
+
   status: Joi.string()
     .valid('draft', 'pending', 'active', 'rejected', 'archived')
     .optional()
@@ -125,7 +130,8 @@ export const createProductSchema = Joi.object({
     }),
 });
 
-// ─── UPDATE PRODUCT ───────────────────────────────────────────
+// UPDATE PRODUCT 
+
 export const updateProductSchema = Joi.object({
   name:        Joi.string().optional(),
   description: Joi.string().optional(),
@@ -179,7 +185,8 @@ export const updateProductSchema = Joi.object({
     .pattern(Joi.string(), Joi.string())
     .optional(),
 
-  // — status can be updated
+  // Status can be updated
+
   status: Joi.string()
     .valid('draft', 'pending', 'active', 'rejected', 'archived')
     .optional()
@@ -192,7 +199,8 @@ export const updateProductSchema = Joi.object({
     'object.min': 'Provide at least one field to update',
   });
 
-// ─── UPDATE PRODUCT STATUS (admin only) ──────────────────────
+// UPDATE PRODUCT STATUS (admin only) 
+
 export const updateStatusSchema = Joi.object({
   status: Joi.string()
     .valid('active', 'rejected', 'archived', 'draft', 'pending')
@@ -203,6 +211,7 @@ export const updateStatusSchema = Joi.object({
     }),
 
   // Reason is required when admin rejects a product
+  
   reason: Joi.string().when('status', {
     is:   'rejected',
     then: Joi.required().messages({
@@ -212,7 +221,7 @@ export const updateStatusSchema = Joi.object({
   }),
 });
 
-// ─── UPDATE BASE PRODUCT STOCK ← NEW ─────────────────────────
+// UPDATE BASE PRODUCT STOCK ← NEW 
 export const updateStockSchema = Joi.object({
   stock: Joi.number()
     .min(0)
@@ -224,7 +233,8 @@ export const updateStockSchema = Joi.object({
     }),
 });
 
-// ─── UPDATE VARIANT STOCK ← NEW ──────────────────────────────
+//  UPDATE VARIANT STOCK ← NEW 
+
 export const updateVariantStockSchema = Joi.object({
   stock: Joi.number()
     .min(0)

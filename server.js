@@ -8,6 +8,10 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
+console.log('=== PAYSTACK DEBUG ===');
+console.log('Key:', process.env.PAYSTACK_SECRET_KEY);
+console.log('======================');
+
 import { initCloudinary } from './config/cloudinary.js';
 initCloudinary();
 
@@ -15,6 +19,7 @@ initCloudinary();
 
 
 // rest of the imports 
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';

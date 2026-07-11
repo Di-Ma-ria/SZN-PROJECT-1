@@ -25,7 +25,7 @@ export const addToCartSchema = Joi.object({
       }),
 });
 
-//update cart item
+//Update cart item
 
 export const updateCartItemSchema = Joi.object({
   quantity: Joi.number()
