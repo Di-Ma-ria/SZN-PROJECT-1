@@ -7,6 +7,13 @@ export const uploadToCloudinary = async (req, res, next) => {
       return next();
     }
 
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      return res.status(500).json({
+        success: false,
+        message: 'Cloudinary is not configured. Please set cloudinary environment variables.',
+      });
+    }
+
     const uploadedPromises = req.files.map((file) => {
       return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(

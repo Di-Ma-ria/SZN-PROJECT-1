@@ -48,7 +48,28 @@ app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
 app.use(helmet());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({ origin: process.env.CLIENT_URL || '*', credentials: true }));
+
+const allowedOrigins =[
+  process.env.CLIENT_URL,
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://localhost:9090"
+].filter(Boolean);
+
+app.use(cors({
+ origin: function (origin, callback) {
+if (!origin || allowedOrigins.includes(origin)) {
+ callback(null, true);
+} else {
+   callback(new Error("Not allowed by CORS: " + origin));
+}
+},
+methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+allowedHeaders: ["Content-Type", "Authorization"],
+credentials: true,
+})
+);
+
 app.use(cookieParser());
 
 // Rate limiting
