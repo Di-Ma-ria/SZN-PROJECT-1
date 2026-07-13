@@ -201,7 +201,7 @@ export const getSingleOrder = async (req, res, next) => {
       }
 
       //Customer can only see their own orders
-      if(req.user.role === 'customer' && order.customer.id.toString() !== req.user.id.toString()
+      if(req.user.role === 'customer' && (!order.customer || order.customer.id.toString() !== req.user.id.toString())
       ){
     return res.status(403).json({
       success: false, 
@@ -311,7 +311,7 @@ export  const cancelOrder = async (req, res, next) => {
     // customer can only cancel their own order
 
   if(
-    req.user.role === 'customer' && order.customer.id.toString() !== req.user.id.toString()
+    req.user.role === 'customer' && (!order.customer || order.customer.id.toString() !== req.user.id.toString())
   ){
     return res.status(403).json({
       success: false,
@@ -347,10 +347,14 @@ export  const cancelOrder = async (req, res, next) => {
 
   await order.save();
 
-  await sendTemplateEmail(order.customer.email, 'orderCancelled',{
-    name: order.customer.name,
-    order,
-  });
+  if (order.customer?.email) {
+    await sendTemplateEmail(order.customer.email, 'orderCancelled', {
+      name: order.customer.name || 'Customer',
+      order,
+    });
+  } else {
+    console.warn(`Order ${order._id} was cancelled, but no customer email was available for notification.`);
+  }
 
   return res.json({
     success: true,
