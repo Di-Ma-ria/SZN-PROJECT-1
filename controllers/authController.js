@@ -13,19 +13,15 @@ const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString()
 
 
 // REGISTER
-
 export const register = async (req, res, next) => {
-  
   try {
-
-  const { name, email, password, phone,address } = req.body;
+    const { name, email, password, phone, address } = req.body;
 
     const existingUser = await User.findOne({ email });
-
     if (existingUser) {
       return res.status(409).json({
         success: false,
-        message: "An account with this email already exists",
+        message: 'An account with this email already exists',
       });
     }
 
@@ -35,18 +31,12 @@ export const register = async (req, res, next) => {
       password,
       address,
       phone: phone || null,
-      role: "customer",
+      role: 'customer',
     });
 
-
-    // send a welcome email
-
-    await sendTemplateEmail(user.email, 'welcome', {name: user.name});
-
-// send otp for email verification automatically
-
+    // Create OTP for email verification
     const otp = generateOtp();
-    await OTP.deleteMany({email, purpose: 'email-verification'});
+    await OTP.deleteMany({ email, purpose: 'email-verification' });
     await OTP.create({
       email,
       otp,
@@ -54,33 +44,37 @@ export const register = async (req, res, next) => {
       expiresAt: new Date(Date.now() + 10 * 60 * 1000),
     });
 
-    await sendTemplateEmail(email, 'otp', {
-      name: user.name,
-      otp,
-      purpose: 'email-verification',
-    });
-
     const accessToken = await generateAccessToken({
-      id: user._id,
-      role: user.role
+      id:   user._id,
+      role: user.role,
     });
 
-    return res.status(201).json({
+    // Respond immediately — do not wait for email
+    res.status(201).json({
       success: true,
-      message: "Account created successfully, please check your email to verify your account.",
+      message: 'Account created successfully. Please check your email to verify your account.',
       accessToken,
       user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
+        id:      user._id,
+        name:    user.name,
+        email:   user.email,
+        role:    user.role,
         address: user.address,
       },
     });
+
+    // Welcome email is sent after verification in verifyOtp
+    sendTemplateEmail(email, 'otp', {
+      name:    user.name,
+      otp,
+      purpose: 'email-verification',
+    }).catch(err => console.error('OTP email failed:', err.message));
+
   } catch (error) {
     next(error);
   }
 };
+
 
 // LOGIN
 
@@ -416,47 +410,64 @@ export const sendOtp = async (req, res, next) => {
 
 //verify otp
 export const verifyOtp = async (req, res, next) => {
-  try{
+  try {
     const { email, otp, purpose } = req.body;
 
-    const record = await OTP.findOne({email, purpose, verified: false });
+    const record = await OTP.findOne({ email, purpose, verified: false });
 
-    if(!record) {
+    if (!record) {
       return res.status(400).json({
         success: false,
-        message: 'OTP not found or already used'
+        message: 'OTP not found or already used',
       });
     }
 
-    if(new Date() > record.expiresAt) {
+    if (new Date() > record.expiresAt) {
       await record.deleteOne();
       return res.status(400).json({
         success: false,
-        message: 'OTP has expired, request a new one.'
+        message: 'OTP has expired. Request a new one.',
       });
     }
 
     const isMatch = await record.compareOtp(otp);
-    if(!isMatch) {
+    if (!isMatch) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid OTP'
+        message: 'Invalid OTP',
       });
     }
 
-    //mark as verified
+    // Mark OTP as verified
     record.verified = true;
     await record.save();
 
-    //if verifying email- mark user as verified
+    // If verifying email — mark user as verified
+    if (purpose === 'email-verification') {
+      const user = await User.findOneAndUpdate(
+        { email },
+        { isVerified: true },
+        { new: true }  // ← returns updated user
+      );
 
-    if(purpose === 'email-verification') {
-      await User.findOneAndUpdate({ email}, {isVerified: true });
+      // ✅ Respond immediately
+      res.json({
+        success: true,
+        message: 'Email verified successfully. Welcome to LODITOJO!',
+      });
+
+      // ✅ Send welcome email in background after verification
+      if (user) {
+        sendTemplateEmail(email, 'welcome', { name: user.name })
+          .catch(err => console.error('Welcome email failed:', err.message));
+      }
+
+      return;
     }
 
-
-    return res.json({success: true,
-      message: 'OTP verified successfully'
+    return res.json({
+      success: true,
+      message: 'OTP verified successfully',
     });
   } catch (error) {
     next(error);
@@ -629,7 +640,7 @@ export const applyForAdmin = async (req, res, next) => {
     }
 
     //Cannot hold a pending seller application and apply for admin
-    
+
     if(user.sellerStatus === 'pending') {
       return res.status(400).json({
         success:false,
