@@ -1,8 +1,7 @@
 
-
 import nodemailer from 'nodemailer';
 
-//  Base HTML wrapper 
+// ─── Base HTML wrapper ────────────────────────────────────────
 const wrap = (content) => `
   <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;">
     <div style="background:#1a1a2e;padding:20px;text-align:center;">
@@ -17,7 +16,7 @@ const wrap = (content) => `
   </div>
 `;
 
-// All email templates 
+// ─── All email templates ──────────────────────────────────────
 const templates = {
 
   otp: ({ name, otp, purpose }) => ({
@@ -27,14 +26,18 @@ const templates = {
     html: wrap(`
       <h3 style="color:#1a1a2e;">Hello, ${name} 👋</h3>
       <p>${purpose === 'password-reset'
-        ? 'You requested to reset your password. Use the OTP below to proceed:'
-        : 'Thank you for signing up! Please verify your email with the OTP below:'
+        ? 'You requested to reset your password. Use the OTP below:'
+        : 'Thank you for signing up! Verify your email with the OTP below:'
       }</p>
       <div style="text-align:center;margin:28px 0;">
-        <span style="font-size:38px;font-weight:bold;letter-spacing:10px;color:#1a1a2e;background:#f0f0f0;padding:14px 28px;border-radius:8px;">${otp}</span>
+        <span style="font-size:38px;font-weight:bold;letter-spacing:10px;
+                     color:#1a1a2e;background:#f0f0f0;
+                     padding:14px 28px;border-radius:8px;">
+          ${otp}
+        </span>
       </div>
       <p style="color:#555;">This OTP expires in <strong>10 minutes</strong>. Do not share it with anyone.</p>
-      <p style="color:#999;font-size:13px;">If you did not request this, please ignore this email.</p>
+      <p style="color:#999;font-size:13px;">If you did not request this please ignore this email.</p>
     `),
   }),
 
@@ -42,10 +45,11 @@ const templates = {
     subject: 'Welcome to LODITOJO! 🎉',
     html: wrap(`
       <h3 style="color:#1a1a2e;">Welcome, ${name}! 🎉</h3>
-      <p>We are excited to have you on board at loditojo. Start exploring thousands of products and enjoy a seamless shopping experience.</p>
+      <p>We are excited to have you on board at LODITOJO.</p>
       <div style="text-align:center;margin:24px 0;">
         <a href="${process.env.CLIENT_URL}/shop"
-           style="background:#1a1a2e;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold;">
+           style="background:#1a1a2e;color:#fff;padding:12px 28px;
+                  border-radius:6px;text-decoration:none;font-weight:bold;">
           Start Shopping
         </a>
       </div>
@@ -92,7 +96,8 @@ const templates = {
       <p>Your order <strong>#${order._id}</strong> status has been updated.</p>
       <div style="text-align:center;margin:24px 0;padding:16px;background:#f5f5f5;border-radius:8px;">
         <p style="margin:0;font-size:12px;color:#999;text-transform:uppercase;">Current Status</p>
-        <p style="margin:8px 0 0;font-size:24px;font-weight:bold;color:#1a1a2e;text-transform:capitalize;">${order.status}</p>
+        <p style="margin:8px 0 0;font-size:24px;font-weight:bold;
+                  color:#1a1a2e;text-transform:capitalize;">${order.status}</p>
       </div>
       <p>Thank you for your patience!</p>
     `),
@@ -106,7 +111,7 @@ const templates = {
       ${order.cancellationReason
         ? `<p><strong>Reason:</strong> ${order.cancellationReason}</p>`
         : ''}
-      <p>If you paid online, a refund will be processed within <strong>3–5 business days</strong>.</p>
+      <p>If you paid online a refund will be processed within <strong>3-5 business days</strong>.</p>
       <p>Questions? Contact our support team anytime.</p>
     `),
   }),
@@ -119,7 +124,7 @@ const templates = {
       <blockquote style="border-left:4px solid #c0392b;padding:10px 16px;color:#555;margin:16px 0;">
         ${reason || 'Violation of our terms of service'}
       </blockquote>
-      <p>If you believe this is a mistake, please contact our support team.</p>
+      <p>If you believe this is a mistake please contact our support team.</p>
     `),
   }),
 
@@ -128,7 +133,7 @@ const templates = {
     html: wrap(`
       <h3 style="color:#1a1a2e;">Hi ${name},</h3>
       ${action === 'approve'
-        ? `<p>🎉 Congratulations! Your seller application has been <strong style="color:green;">approved</strong>.</p>`
+        ? `<p>🎉 Congratulations! Your seller application has been <strong style="color:green;">approved</strong>. You can now list products on LODITOJO.</p>`
         : `<p>Your seller application has been <strong style="color:red;">rejected</strong>.</p>
            ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
            <p>You may reapply after addressing the issues mentioned above.</p>`
@@ -136,54 +141,50 @@ const templates = {
     `),
   }),
 
+  accountDeletion: ({ name, otp }) => ({
+    subject: 'Confirm Account Deletion — LODITOJO',
+    html: wrap(`
+      <h3 style="color:#c0392b;">Hi ${name},</h3>
+      <p>We received a request to <strong>permanently delete</strong> your LODITOJO account.</p>
+      <p>Use the OTP below to confirm this action:</p>
+      <div style="text-align:center;margin:28px 0;">
+        <span style="font-size:38px;font-weight:bold;letter-spacing:10px;
+                     color:#c0392b;background:#f0f0f0;
+                     padding:14px 28px;border-radius:8px;">
+          ${otp}
+        </span>
+      </div>
+      <p style="color:#555;">This OTP expires in <strong>10 minutes</strong>.</p>
+      <p style="color:#c0392b;font-weight:bold;">
+        If you did not request this please change your password immediately.
+      </p>
+    `),
+  }),
 
-// Account deletion OTP
-accountDeletion: ({ name, otp }) => ({
-  subject: 'Confirm Account Deletion — LODITOJO',
-  html: wrap(`
-    <h3 style="color:#c0392b;">Hi ${name},</h3>
-    <p>We received a request to <strong>permanently delete</strong> your LODITOJO account.</p>
-    <p>Use the OTP below to confirm this action:</p>
-    <div style="text-align:center;margin:28px 0;">
-      <span style="font-size:38px;font-weight:bold;letter-spacing:10px;
-                   color:#c0392b;background:#f0f0f0;padding:14px 28px;
-                   border-radius:8px;">
-        ${otp}
-      </span>
-    </div>
-    <p style="color:#555;">
-      This OTP expires in <strong>10 minutes</strong>.
-    </p>
-    <p style="color:#c0392b;font-weight:bold;">
-      If you did not request this, please change your password immediately.
-    </p>
-  `),
-}),
+}; // ← templates object closes here
 
-};
-
-
-// Create transporter inside function 
-//  This runs AFTER dotenv has loaded — variables are available
+// ─── Create transporter inside function ──────────────────────
+// ✅ Runs AFTER dotenv loads — variables are available
 const createTransporter = () => {
   return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,       // smtp.gmail.com
-    port: Number(process.env.EMAIL_PORT) || 587,
-    secure: false,                       // false for port 587
+    host:   process.env.EMAIL_HOST,
+    port:   Number(process.env.EMAIL_PORT) || 587,
+    secure: false,
     auth: {
-      user: process.env.EMAIL_USER,     // yourname@gmail.com
-      pass: process.env.EMAIL_PASS,     // your App Password
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
     },
     tls: {
-      rejectUnauthorized: false,         // prevents TLS errors
+      rejectUnauthorized: false,
     },
   });
 };
 
-// Core send function
+// ─── Core send function ───────────────────────────────────────
 export const sendEmail = async ({ to, subject, html }) => {
   try {
-    //  Creates fresh transporter each time — variables are loaded by now
+    // ✅ Creates fresh transporter each time
+    // reads process.env AFTER dotenv has loaded
     const transporter = createTransporter();
 
     await transporter.sendMail({
@@ -195,16 +196,19 @@ export const sendEmail = async ({ to, subject, html }) => {
 
     console.log(`📧 Email sent to ${to}`);
   } catch (error) {
+    // Log error but do not crash the server
     console.error('Email failed to send:', error.message);
+    console.error('EMAIL_HOST:', process.env.EMAIL_HOST);
+    console.error('EMAIL_USER:', process.env.EMAIL_USER);
   }
 };
 
-//Template helper 
+// ─── Template helper ──────────────────────────────────────────
 export const sendTemplateEmail = async (to, templateName, data) => {
   const template = templates[templateName](data);
   await sendEmail({
     to,
     subject: template.subject,
-    html: template.html,
+    html:    template.html,
   });
 };
