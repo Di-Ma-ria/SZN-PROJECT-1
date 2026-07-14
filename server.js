@@ -22,6 +22,7 @@ initCloudinary();
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import morgan from 'morgan';
 import { rateLimit } from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import ConnectDb from './config/db.js';
@@ -44,8 +45,10 @@ const PORT = process.env.PORT || 5000;
 ConnectDb();
 
 // MIDDLEWARES
+
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
 app.use(helmet());
+app.use(morgan('dev'))
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
