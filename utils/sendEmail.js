@@ -180,7 +180,7 @@ const createTransporter = () => {
 
 // Core send function
 export const sendEmail = async ({ to, subject, html }) => {
- // try {
+ try {
     const transporter = createTransporter();
 
     await transporter.sendMail({
@@ -191,11 +191,11 @@ export const sendEmail = async ({ to, subject, html }) => {
     });
 
     console.log(`📧 Email sent to ${to}`);
-  // } catch (error) {
-  //   console.error('Email failed to send:', error.message);
-  //   console.error('EMAIL_HOST:', process.env.EMAIL_HOST);
-  //   console.error('EMAIL_USER:', process.env.EMAIL_USER);
-  // }
+  } catch (error) {
+    console.error('Email failed to send:', error.message);
+    console.error('EMAIL_HOST:', process.env.EMAIL_HOST);
+    console.error('EMAIL_USER:', process.env.EMAIL_USER);
+  }
 };
 
 //  Template helper
