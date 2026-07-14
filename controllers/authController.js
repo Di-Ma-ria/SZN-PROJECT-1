@@ -299,7 +299,6 @@ export const requestAccountDeletion = async (req, res, next) => {
 };
 
 // CONFIRM ACCOUNT DELETION 
-// User enters OTP → account is deleted
 export const deleteMyAccount = async (req, res, next) => {
   try {
     const { otp } = req.body;
@@ -447,16 +446,14 @@ export const verifyOtp = async (req, res, next) => {
       const user = await User.findOneAndUpdate(
         { email },
         { isVerified: true },
-        { new: true }  // ← returns updated user
+        { new: true }
       );
 
-      // ✅ Respond immediately
       res.json({
         success: true,
         message: 'Email verified successfully. Welcome to LODITOJO!',
       });
 
-      // ✅ Send welcome email in background after verification
       if (user) {
         sendTemplateEmail(email, 'welcome', { name: user.name })
           .catch(err => console.error('Welcome email failed:', err.message));
@@ -533,10 +530,9 @@ export const resetPassword = async (req, res, next) => {
       });
     }
 
-    // this uses the compareOtp method from otpModel — no bcrypt import needed
+    // this uses the compareOtp method from otpModel
     const isOtpValid = await record.compareOtp(otp);
 
-    //  Added return so code stops here if OTP is wrong
     if (!isOtpValid || !record.verified) {
       return res.status(400).json({
         success: false,
@@ -552,11 +548,9 @@ export const resetPassword = async (req, res, next) => {
       });
     }
 
-    // pre-save hook hashes the new password
     user.password = newPassword;
     await user.save();
 
-    // Delete the used OTP record
     await record.deleteOne();
 
     return res.json({
