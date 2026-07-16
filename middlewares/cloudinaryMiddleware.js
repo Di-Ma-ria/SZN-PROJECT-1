@@ -41,3 +41,21 @@ export const uploadToCloudinary = async (req, res, next) => {
     return next(new Error(`Image upload failed: ${error.message}`));
   }
 };
+
+
+//parseJsonFileds.js
+export const parseJsonFields =(fields)=>(req,res,next)=>{
+    for (const field of fields) {
+        if (req.body[field] && typeof req.body[field]==='string') {
+            try{
+                req.body[field]= JSON.parse(req.body[field]);
+            }catch(err) {
+                return res.status(400).json({
+                    success:false,
+                    message:`"${field}" must be valid JSON`
+                });
+            }
+        }
+    }
+    next();
+}

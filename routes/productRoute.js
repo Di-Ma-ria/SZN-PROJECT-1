@@ -6,7 +6,7 @@ import { isAdmin, isSeller } from '../middlewares/adminMiddleware.js';
 
 import validate              from '../validation/validate.js';
 
-import { uploadToCloudinary }  from '../middlewares/cloudinaryMiddleware.js';
+import { uploadToCloudinary, parseJsonFields }  from '../middlewares/cloudinaryMiddleware.js';
 
 import { uploadProductImages } from '../middlewares/multerMiddleware.js';
 
@@ -85,9 +85,9 @@ ProductRoutes.get('/:id/related', getRelatedProducts);
 
 // SELLER CRUD ROUTES
 
-ProductRoutes.post('/', authMiddleware, isSeller, uploadProductImages, uploadToCloudinary, validate(createProductSchema), createProduct);
+ProductRoutes.post('/', authMiddleware, isSeller, uploadProductImages, uploadToCloudinary, parseJsonFields(['variants', 'specs']), validate(createProductSchema), createProduct);
 
-ProductRoutes.patch('/:id', authMiddleware, isSeller, uploadProductImages, uploadToCloudinary, validate(updateProductSchema), updateProduct);
+ProductRoutes.patch('/:id', authMiddleware, isSeller, uploadProductImages, uploadToCloudinary, parseJsonFields(['variants', 'specs']),validate(updateProductSchema), updateProduct);
 
 ProductRoutes.post('/:id/images', authMiddleware, isSeller, uploadProductImages, uploadToCloudinary, addProductImages);
 
