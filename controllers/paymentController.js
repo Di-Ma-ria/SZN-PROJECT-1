@@ -47,10 +47,10 @@ export const initializePayment = async (req, res, next) => {
         email:     order.customer.email,
         amount:    Math.round(order.totalAmount * 100), // Paystack uses kobo
         currency:  'NGN',
-        reference: `order_${order._id}_${Date.now()}`,
+        reference: `order_${order.id}_${Date.now()}`,
         metadata: {
-          orderId:      order._id.toString(),
-          customerId:   req.user._id.toString(),
+          orderId:      order.id.toString(),
+          customerId:   req.user.id.toString(),
           customerName: order.customer.name,
         },
         callback_url: `${process.env.CLIENT_URL}/payment/verify`,
@@ -133,7 +133,7 @@ export const verifyPayment = async (req, res, next) => {
     await order.save();
 
     //  Update customer totalOrders and totalSpent 
-    await User.findByIdAndUpdate(order.customer._id, {
+    await User.findByIdAndUpdate(order.customer.id, {
       $inc: {
         totalOrders: 1,
         totalSpent:  order.totalAmount,
@@ -196,7 +196,7 @@ export const paystackWebhook = async (req, res, next) => {
         await order.save();
 
         // Update customer stats
-        await User.findByIdAndUpdate(order.customer._id, {
+        await User.findByIdAndUpdate(order.customer.id, {
           $inc: {
             totalOrders: 1,
             totalSpent:  order.totalAmount,
