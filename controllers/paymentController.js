@@ -27,7 +27,7 @@ export const initializePayment = async (req, res, next) => {
     }
 
     // Only the customer who owns this order can pay
-    if (order.customer._id.toString() !== req.user._id.toString()) {
+    if (order.customer.id.toString() !== req.user.id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Access denied',
