@@ -7,6 +7,13 @@ export const uploadToCloudinary = async (req, res, next) => {
       return next();
     }
 
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      return res.status(500).json({
+        success: false,
+        message: 'Cloudinary is not configured. Please set cloudinary environment variables.',
+      });
+    }
+
     const uploadedPromises = req.files.map((file) => {
       return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
@@ -34,3 +41,21 @@ export const uploadToCloudinary = async (req, res, next) => {
     return next(new Error(`Image upload failed: ${error.message}`));
   }
 };
+
+
+//parseJsonFileds.js
+export const parseJsonFields =(fields)=>(req,res,next)=>{
+    for (const field of fields) {
+        if (req.body[field] && typeof req.body[field]==='string') {
+            try{
+                req.body[field]= JSON.parse(req.body[field]);
+            }catch(err) {
+                return res.status(400).json({
+                    success:false,
+                    message:`"${field}" must be valid JSON`
+                });
+            }
+        }
+    }
+    next();
+}

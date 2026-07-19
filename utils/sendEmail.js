@@ -1,7 +1,7 @@
 
 import nodemailer from 'nodemailer';
 
-// ─── Base HTML wrapper ────────────────────────────────────────
+//Base HTML wrapper
 const wrap = (content) => `
   <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;">
     <div style="background:#1a1a2e;padding:20px;text-align:center;">
@@ -16,7 +16,7 @@ const wrap = (content) => `
   </div>
 `;
 
-// ─── All email templates ──────────────────────────────────────
+// All email templates
 const templates = {
 
   otp: ({ name, otp, purpose }) => ({
@@ -161,10 +161,8 @@ const templates = {
     `),
   }),
 
-}; // ← templates object closes here
+};
 
-// ─── Create transporter inside function ──────────────────────
-// ✅ Runs AFTER dotenv loads — variables are available
 const createTransporter = () => {
   return nodemailer.createTransport({
     host:   process.env.EMAIL_HOST,
@@ -180,11 +178,9 @@ const createTransporter = () => {
   });
 };
 
-// ─── Core send function ───────────────────────────────────────
+// Core send function
 export const sendEmail = async ({ to, subject, html }) => {
-  try {
-    // ✅ Creates fresh transporter each time
-    // reads process.env AFTER dotenv has loaded
+ try {
     const transporter = createTransporter();
 
     await transporter.sendMail({
@@ -196,14 +192,13 @@ export const sendEmail = async ({ to, subject, html }) => {
 
     console.log(`📧 Email sent to ${to}`);
   } catch (error) {
-    // Log error but do not crash the server
     console.error('Email failed to send:', error.message);
     console.error('EMAIL_HOST:', process.env.EMAIL_HOST);
     console.error('EMAIL_USER:', process.env.EMAIL_USER);
   }
 };
 
-// ─── Template helper ──────────────────────────────────────────
+//  Template helper
 export const sendTemplateEmail = async (to, templateName, data) => {
   const template = templates[templateName](data);
   await sendEmail({
