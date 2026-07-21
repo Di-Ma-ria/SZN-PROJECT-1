@@ -164,6 +164,13 @@ const templates = {
 };
 
 const createTransporter = () => {
+
+ console.log('=== EMAIL DEBUG ===');
+  console.log('HOST:', process.env.EMAIL_HOST);
+  console.log('USER:', process.env.EMAIL_USER);
+  console.log('PASS:', process.env.EMAIL_PASS ? `${process.env.EMAIL_PASS.substring(0, 10)}...` : 'MISSING');
+  console.log('==================');
+
   return nodemailer.createTransport({
     host:   process.env.EMAIL_HOST,
     port:   Number(process.env.EMAIL_PORT) || 587,
@@ -181,6 +188,14 @@ const createTransporter = () => {
 // Core send function
 export const sendEmail = async ({ to, subject, html }) => {
  try {
+  console.log('=== EMAIL DEBUG ===');
+    console.log('HOST:', process.env.EMAIL_HOST);
+    console.log('USER:', process.env.EMAIL_USER);
+    console.log('PASS:', process.env.EMAIL_PASS ? 'loaded' : 'MISSING');
+    console.log('==================');
+
+
+
     const transporter = createTransporter();
 
     await transporter.sendMail({

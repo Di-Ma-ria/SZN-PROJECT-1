@@ -10,6 +10,13 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
+// Temporary debug
+console.log('=== ENV CHECK ===');
+console.log('EMAIL_HOST:', process.env.EMAIL_HOST);
+console.log('EMAIL_USER:', process.env.EMAIL_USER);
+console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'loaded' : 'MISSING');
+console.log('=================');
+
 
 import { initCloudinary } from './config/cloudinary.js';
 initCloudinary();
@@ -78,6 +85,15 @@ credentials: true,
 
 app.use(cookieParser());
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  message: {
+    success: false,
+    message: 'Too many attempts. Try in 15 minutes',
+  },
+});
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -87,6 +103,8 @@ const limiter = rateLimit({
     message: 'Too many requests. Please try again later.',
   },
 });
+
+app.use('/api/auth', authLimiter);
 app.use('/api', limiter);
 
 // ROUTES

@@ -1,21 +1,27 @@
-import {User} from "../models/userModel.js";
-
-import {OTP} from '../models/otpModel.js';
 
 
-import{sendTemplateEmail} from '../utils/sendEmail.js';
+import { User } from '../models/userModel.js';
 
-import { generateAccessToken, generateRefreshToken } from "../utils/generateToken.js";
+import { OTP }  from '../models/otpModel.js';
 
-// to generate 6 digit otp
+import { generateAccessToken, generateRefreshToken } from '../utils/generateToken.js';
 
-const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+//to generate 6 digit otp
+
+import { sendTemplateEmail } from '../utils/sendEmail.js';
+
+//Internal OTP generator 
+
+const generateOtp = () =>
+  Math.floor(100000 + Math.random() * 900000).toString();
 
 
 // REGISTER
+
 export const register = async (req, res, next) => {
   try {
-    const { name, email, password, phone, address } = req.body;
+  
+    const { name, email, password } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -25,22 +31,21 @@ export const register = async (req, res, next) => {
       });
     }
 
+    //  Create user without address or phone
     const user = await User.create({
       name,
       email,
       password,
-      address,
-      phone: phone || null,
-      role: 'customer',
+      role:   'customer',
+      profileComplete: false,
     });
 
-    // Create OTP for email verification
     const otp = generateOtp();
     await OTP.deleteMany({ email, purpose: 'email-verification' });
     await OTP.create({
       email,
       otp,
-      purpose: 'email-verification',
+      purpose:   'email-verification',
       expiresAt: new Date(Date.now() + 10 * 60 * 1000),
     });
 
@@ -49,23 +54,26 @@ export const register = async (req, res, next) => {
       role: user.role,
     });
 
-    // Respond immediately — do not wait for email
+    // Respond immediately with profileComplete: false.  This tells the frontend to prompt user to complete profile
     res.status(201).json({
-      success: true,
-      message: 'Account created successfully. Please check your email to verify your account.',
+      success:   true,
+      message:   'Account created successfully. Please check your email to verify your account.',
       accessToken,
+      profileComplete: false,
+      nextStep:  'Please complete your profile by adding your phone number and delivery address.',
       user: {
-        id:      user._id,
-        name:    user.name,
-        email:   user.email,
-        role:    user.role,
-        address: user.address,
+        id:       user._id,
+        name:     user.name,
+        email:    user.email,
+        role:     user.role,
+        profileComplete: false,
       },
     });
 
-    // Welcome email is sent after verification in verifyOtp
+    // Send OTP email in background — no welcome email yet
+    // Welcome email sent after verification in verifyOtp
     sendTemplateEmail(email, 'otp', {
-      name:    user.name,
+      name:  user.name,
       otp,
       purpose: 'email-verification',
     }).catch(err => console.error('OTP email failed:', err.message));
@@ -75,154 +83,182 @@ export const register = async (req, res, next) => {
   }
 };
 
-
 // LOGIN
 
 export const logIn = async (req, res, next) => {
-
-  try{
+  try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email}).select('+password');
-    if(!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'invalid email or password',
-      });
-    }
+    const user = await User.findOne({ email, isDeleted: false })
+      .select('+password +loginAttempts +lockUntil');
 
-    if(user.isDeleted) {
-      return res.status(403).json({
-        success: false,
-        message: 'This account no longer exists'
-      });
-    }
-
-    if (user.isSuspended) {
-  return res.status(403).json({
-    success: false,
-    message: `Your account has been suspended. Reason: ${
-      user.suspensionReason || 'Contact support for details'
-    }`,
-  });
-}
-
-    if(user.isLocked()) {
-      return res.status (423).json({
-        success: false,
-        message: 'Account temporarily locked due to too many failed attempts.Try again in 2 hours',
-      });
-    }
-    const isMatch = await user.comparePassword(password);
-    if(!isMatch) {
-      await user.incrementLoginAttempts();
+    if (!user) {
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password',
       });
     }
 
-    await user.resetLoginAttempts();
-//Generate both tokens
-    const accessToken = await generateAccessToken({ 
-      id: user._id,
-      role: user.role
-    });
-    
-    const refreshToken = await generateRefreshToken({ 
-      id: user._id 
-    });
+    if (user.isSuspended) {
+      return res.status(403).json({
+        success: false,
+        message: `Your account has been suspended. Reason: ${
+          user.suspensionReason || 'Contact support'
+        }`,
+      });
+    }
 
-// Save refresh token to DB for revocation
+    // Check if account is locked
+    if (user.lockUntil && user.lockUntil > Date.now()) {
+      const minutesLeft = Math.ceil((user.lockUntil - Date.now()) / 60000);
+      return res.status(423).json({
+        success: false,
+        message: `Account locked. Try again in ${minutesLeft} minute(s).`,
+      });
+    }
+
+    const isMatch = await user.comparePassword(password);
+
+    if (!isMatch) {
+      user.loginAttempts = (user.loginAttempts || 0) + 1;
+
+      // Lock account after 5 failed attempts
+      if (user.loginAttempts >= 5) {
+        user.lockUntil    = new Date(Date.now() + 15 * 60 * 1000);
+        user.loginAttempts = 0;
+        await user.save();
+        return res.status(423).json({
+          success: false,
+          message: 'Too many failed attempts. Account locked for 15 minutes.',
+        });
+      }
+
+      await user.save();
+      return res.status(401).json({
+        success: false,
+        message: `Invalid email or password. ${5 - user.loginAttempts} attempt(s) remaining.`,
+      });
+    }
+
+    // Reset login attempts on success
+    user.loginAttempts = 0;
+    user.lockUntil     = null;
+
+    const accessToken  = await generateAccessToken({ id: user._id, role: user.role });
+    const refreshToken = await generateRefreshToken({ id: user._id });
+
     user.refreshToken = refreshToken;
     await user.save();
-//Send refresh token in httpOnly cookie
+
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // true on HTTPS
+      secure:   process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      maxAge:   7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
     return res.status(200).json({
-      success:true,
-      message: 'Login successful',
+      success:         true,
+      message:         'Login successful',
       accessToken,
+      profileComplete: user.profileComplete,
+      //  Remind user to complete profile if not done
+      nextStep:        !user.profileComplete
+        ? 'Please complete your profile by adding your phone and address.'
+        : null,
       user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        isVerified: user.isVerified,
-        sellerStatus: user.sellerStatus,
+        id:        user._id,
+        name:      user.name,
+        email:     user.email,
+        role:       user.role,
+        isVerified:      user.isVerified,
+        profileComplete: user.profileComplete,
       },
     });
-
   } catch (error) {
     next(error);
   }
 };
 
 
-//GET MY PROFILE
+// GET PROFILE
 
 export const getProfile = async (req, res, next) => {
-  try{
-    const user = await User.findById(req.user._id).select(
-      '-password -passwordResetToken -passwordResetExpires -loginAttempts -lockUntil'
-    );
+  try {
+    const user = await User.findById(req.user._id).select('-password');
 
-    if(!user || user.isDeleted) {
+    if (!user) {
       return res.status(404).json({
-        success: false, message: 'User not found'
+        success: false,
+        message: 'User not found',
       });
     }
 
-    return res.json({success: true, user});
-  } catch(error) {
+    // this tell frontend exactly what fields are missing
+    const missingFields = [];
+    if (!user.phone)             missingFields.push('phone');
+    if (!user.address?.street)   missingFields.push('street');
+    if (!user.address?.city)     missingFields.push('city');
+    if (!user.address?.state)    missingFields.push('state');
+    if (!user.address?.country)  missingFields.push('country');
+
+    return res.status(200).json({
+      success:         true,
+      profileComplete: user.profileComplete,
+      missingFields:   missingFields,
+      // Remind user to complete profile if not done
+      message:         !user.profileComplete
+        ? `Please complete your profile. Missing: ${missingFields.join(', ')}`
+        : null,
+      user,
+    });
+  } catch (error) {
     next(error);
   }
 };
 
-// UPDATE PROFILE 
+// UPDATE PROFILE
 
-export const updateProfile = async (req, res, next ) => {
-  try{
-    const { name, phone, address} = req.body;
+export const updateProfile = async (req, res, next) => {
+  try {
+    const { name, phone, address } = req.body;
 
-    const user = await User.findById(req.user._id);
-    if(!user || user.isDeleted) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+    const updateData = {};
+    if (name)    updateData.name  = name;
+    if (phone)   updateData.phone = phone;
+    if (address) updateData.address = address;
+
+    //  Mark profile complete when full address is provided
+    if (
+      address        &&
+      address.street &&
+      address.city   &&
+      address.state  &&
+      address.country
+    ) {
+      updateData.profileComplete = true;
     }
 
-    if(name) user.name =name;
-    if(phone) user.phone = phone;
-    if(address) user.address = address;
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      updateData,
+      { new: true, runValidators: false }
+    ).select('-password');
 
-    await user.save();
-
-    return res.json({
-      success: true,
-      message: 'Profile updated successfully',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        address: user.address,
-        role: user.role,
-      },
+    return res.status(200).json({
+      success:         true,
+      message:         updateData.profileComplete
+        ? '🎉 Profile completed successfully!'
+        : 'Profile updated successfully',
+      profileComplete: user.profileComplete,
+      user,
     });
-  } catch (error){
-    next (error);
+  } catch (error) {
+    next(error);
   }
 };
 
-
-// CHANGE PASSWORD 
+// CHANGE PASSWORD
 
 export const changePassword = async (req, res, next) => {
   try {
@@ -230,27 +266,35 @@ export const changePassword = async (req, res, next) => {
 
     const user = await User.findById(req.user._id).select('+password');
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
     }
 
     const isMatch = await user.comparePassword(oldPassword);
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Old password is incorrect' });
+      return res.status(401).json({
+        success: false,
+        message: 'Incorrect current password',
+      });
     }
 
-    user.password = newPassword; // pre-save hook will hash it
+    user.password = newPassword;
     await user.save();
 
-    return res.json({ success: true, message: 'Password changed successfully' });
+    return res.status(200).json({
+      success: true,
+      message: 'Password changed successfully. Please log in again.',
+    });
   } catch (error) {
     next(error);
   }
 };
 
-//DELETE MY ACCOUNT 
 
-// REQUEST ACCOUNT DELETION 
-// User confirms password → OTP is sent to email
+// REQUEST ACCOUNT DELETION (Step 1)
+
 export const requestAccountDeletion = async (req, res, next) => {
   try {
     const { password } = req.body;
@@ -263,7 +307,6 @@ export const requestAccountDeletion = async (req, res, next) => {
       });
     }
 
-    // Confirm password first
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({
@@ -272,33 +315,34 @@ export const requestAccountDeletion = async (req, res, next) => {
       });
     }
 
-    // Delete any existing OTP for this purpose
     await OTP.deleteMany({ email: user.email, purpose: 'account-deletion' });
 
-    // Generate and send OTP
     const otp = generateOtp();
     await OTP.create({
-      email: user.email,
+      email:     user.email,
       otp,
-      purpose: 'account-deletion',
-      expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+      purpose:   'account-deletion',
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
     });
 
-    await sendTemplateEmail(user.email, 'accountDeletion', {
+    res.json({
+      success: true,
+      message: 'OTP sent to your email. Enter it to confirm account deletion.',
+    });
+
+    sendTemplateEmail(user.email, 'accountDeletion', {
       name: user.name,
       otp,
-    });
+    }).catch(err => console.error('Deletion email failed:', err.message));
 
-    return res.json({
-      success: true,
-      message: 'OTP sent to your email. Please verify to complete account deletion.',
-    });
   } catch (error) {
     next(error);
   }
 };
 
-// CONFIRM ACCOUNT DELETION 
+
+// DELETE MY ACCOUNT (Step 2)
+
 export const deleteMyAccount = async (req, res, next) => {
   try {
     const { otp } = req.body;
@@ -311,10 +355,9 @@ export const deleteMyAccount = async (req, res, next) => {
       });
     }
 
-    // Find the OTP record
     const record = await OTP.findOne({
-      email: user.email,
-      purpose: 'account-deletion',
+      email:    user.email,
+      purpose:  'account-deletion',
       verified: false,
     });
 
@@ -325,7 +368,6 @@ export const deleteMyAccount = async (req, res, next) => {
       });
     }
 
-    // Check OTP has not expired
     if (new Date() > record.expiresAt) {
       await record.deleteOne();
       return res.status(400).json({
@@ -334,7 +376,6 @@ export const deleteMyAccount = async (req, res, next) => {
       });
     }
 
-    // Verify OTP
     const isOtpValid = await record.compareOtp(otp);
     if (!isOtpValid) {
       return res.status(400).json({
@@ -343,16 +384,13 @@ export const deleteMyAccount = async (req, res, next) => {
       });
     }
 
-    // Delete the OTP record
     await record.deleteOne();
 
-    // Soft delete the account
-    user.isDeleted = true;
-    user.deletedAt = Date.now();
+    user.isDeleted    = true;
+    user.deletedAt    = Date.now();
     user.refreshToken = null;
     await user.save();
 
-    // Clear the cookie
     res.clearCookie('refreshToken');
 
     return res.json({
@@ -364,56 +402,53 @@ export const deleteMyAccount = async (req, res, next) => {
   }
 };
 
-
-
-
-
-
-//Send Otp..... used for email-verification and password-reset
+// SEND OTP
 
 export const sendOtp = async (req, res, next) => {
-  try{
+  try {
     const { email, purpose } = req.body;
 
     const user = await User.findOne({ email, isDeleted: false });
-    if(!user) {
+    if (!user) {
       return res.status(404).json({
-        success: false, 
-        message: 'No account found with this email'
+        success: false,
+        message: 'No account found with this email',
       });
     }
 
-    //delete any existing otp for this email + purpose
-
-    await OTP.deleteMany({ email, purpose});
+    await OTP.deleteMany({ email, purpose });
 
     const otp = generateOtp();
     await OTP.create({
       email,
       otp,
       purpose,
-      expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
     });
 
-
-    await sendTemplateEmail(email, 'otp', {name: user.name, otp, purpose });
-
-    return res.json({
+    res.json({
       success: true,
-      message: `OTP sent to ${email}.it expires in 10 minutes.`,
+      message: `OTP sent to ${email}. It expires in 10 minutes.`,
     });
+
+    sendTemplateEmail(email, 'otp', {
+      name: user.name,
+      otp,
+      purpose,
+    }).catch(err => console.error('OTP email failed:', err.message));
+
   } catch (error) {
     next(error);
   }
 };
 
-//verify otp
+// VERIFY OTP
+
 export const verifyOtp = async (req, res, next) => {
   try {
     const { email, otp, purpose } = req.body;
 
     const record = await OTP.findOne({ email, purpose, verified: false });
-
     if (!record) {
       return res.status(400).json({
         success: false,
@@ -437,11 +472,9 @@ export const verifyOtp = async (req, res, next) => {
       });
     }
 
-    // Mark OTP as verified
     record.verified = true;
     await record.save();
 
-    // If verifying email — mark user as verified
     if (purpose === 'email-verification') {
       const user = await User.findOneAndUpdate(
         { email },
@@ -449,11 +482,18 @@ export const verifyOtp = async (req, res, next) => {
         { new: true }
       );
 
+      //  Respond immediately
       res.json({
-        success: true,
-        message: 'Email verified successfully. Welcome to LODITOJO!',
+        success:         true,
+        message:         'Email verified successfully. Welcome to LODITOJO!',
+        profileComplete: user?.profileComplete || false,
+        //  Remind user to complete profile after verification
+        nextStep:        !user?.profileComplete
+          ? 'Please complete your profile by adding your phone and address.'
+          : null,
       });
 
+      //  Send welcome email after verification in background
       if (user) {
         sendTemplateEmail(email, 'welcome', { name: user.name })
           .catch(err => console.error('Welcome email failed:', err.message));
@@ -471,53 +511,54 @@ export const verifyOtp = async (req, res, next) => {
   }
 };
 
-//resend otp
+// RESEND OTP
 
 export const resendOtp = async (req, res, next) => {
   return sendOtp(req, res, next);
 };
 
-// Forgot password
+
+// FORGOT PASSWORD
+
 export const forgotPassword = async (req, res, next) => {
-  try{
+  try {
     const { email } = req.body;
 
-    const user = await User.findOne({email, isDeleted: false });
-    if(!user) {
-      return res.json({
-        success: true,
-        message: 'If an account with email exists, an OTP has been sent.',
-      });
-    }
+    res.json({
+      success: true,
+      message: 'If an account exists with this email an OTP has been sent.',
+    });
 
-    await OTP.deleteMany({email, purpose: 'password-reset'});
+    const user = await User.findOne({ email, isDeleted: false });
+    if (!user) return;
+
+    await OTP.deleteMany({ email, purpose: 'password-reset' });
 
     const otp = generateOtp();
     await OTP.create({
       email,
       otp,
-      purpose: 'password-reset',
+      purpose:   'password-reset',
       expiresAt: new Date(Date.now() + 10 * 60 * 1000),
     });
 
-    await sendTemplateEmail(email, 'otp', {name: user.name, otp, purpose: 'password-reset'});
+    sendTemplateEmail(email, 'otp', {
+      name:    user.name,
+      otp,
+      purpose: 'password-reset',
+    }).catch(err => console.error('Forgot password email failed:', err.message));
 
-    return res.json({
-      success: true,
-      message: 'If an account with this email exists, an OTP has been sent.',
-    });
   } catch (error) {
     next(error);
   }
 };
 
+// RESET PASSWORD
 
-//reset password, user enters OTP + new password
 export const resetPassword = async (req, res, next) => {
   try {
     const { email, otp, newPassword } = req.body;
 
-    // Find the OTP record
     const record = await OTP.findOne({
       email,
       purpose: 'password-reset',
@@ -530,9 +571,7 @@ export const resetPassword = async (req, res, next) => {
       });
     }
 
-    // this uses the compareOtp method from otpModel
     const isOtpValid = await record.compareOtp(otp);
-
     if (!isOtpValid || !record.verified) {
       return res.status(400).json({
         success: false,
@@ -563,112 +602,102 @@ export const resetPassword = async (req, res, next) => {
 };
 
 
-//APPLY FOR SELLER 
+// APPLY FOR SELLER
 
 export const applyForSeller = async (req, res, next) => {
   try {
+    const {
+      storeName,
+      storeDescription,
+      bankName,
+      accountNumber,
+      accountName,
+    } = req.body;
+
     const user = await User.findById(req.user._id);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
 
-    if (user.role === 'seller' || user.sellerStatus === 'approved') {
-      return res.status(400).json({ success: false, message: 'You are already an approved seller' });
-    }
-
-    if (user.sellerStatus === 'pending') {
-      return res.status(400).json({ success: false, message: 'Your seller application is already pending review' });
-    }
-
-    //GUARD: Admins and superadmins cannot apply to be sellers
-    if(['admin', 'superadmin'].includes(user.role)) {
-      return res.status(403).json({
-        success:false,
-        message:'Admin accounts cannot apply to become sellers',
+    if (['seller', 'admin', 'superadmin'].includes(user.role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'You are already a seller or admin',
       });
     }
 
-    const { storeName, storeDescription, storeAddress, bankDetails } = req.body;
+    if (user.sellerStatus === 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'You already have a pending seller application',
+      });
+    }
 
-    user.sellerStatus                   = 'pending';
-    user.sellerProfile.storeName        = storeName;
-    user.sellerProfile.storeDescription = storeDescription;
-    user.sellerProfile.storeAddress     = storeAddress;
-    user.sellerProfile.bankDetails      = bankDetails;
-
+    user.sellerStatus   = 'pending';
+    user.sellerProfile  = {
+      storeName,
+      storeDescription,
+      bankDetails: { bankName, accountNumber, accountName },
+    };
     await user.save();
 
-    return res.json({
+    return res.status(200).json({
       success: true,
-      message: 'Seller application submitted successfully. Pending admin review',
+      message: 'Seller application submitted. You will be notified once reviewed.',
     });
   } catch (error) {
     next(error);
   }
 };
 
-// APPLY FOR ADMIN 
+
+// APPLY FOR ADMIN
 
 export const applyForAdmin = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
 
     if (['admin', 'superadmin'].includes(user.role)) {
-      return res.status(400).json({ success: false, message: 'You are already an admin' });
-    }
-
-    if (user.adminStatus === 'pending') {
-      return res.status(400).json({ success: false, message: 'Your admin application is already pending review' });
-    }
-
-    //Sellers cannot apply for admin
-
-    if(user.role === 'seller') {
-      return res.status(403).json({
-        success:false,
-        message:'Seller accounts cannot apply to become admins',
+      return res.status(400).json({
+        success: false,
+        message: 'You are already an admin',
       });
     }
 
-    //Cannot hold a pending seller application and apply for admin
-
-    if(user.sellerStatus === 'pending') {
+    if (user.adminStatus === 'pending') {
       return res.status(400).json({
-        success:false,
-        message:'You have a pending seller application. Withdraw it before applying for admin.',
+        success: false,
+        message: 'You already have a pending admin application',
       });
     }
 
     user.adminStatus = 'pending';
     await user.save();
 
-    return res.json({
+    return res.status(200).json({
       success: true,
-      message: 'Admin application submitted successfully. Pending superadmin review',
+      message: 'Admin application submitted. You will be notified once reviewed.',
     });
   } catch (error) {
     next(error);
   }
 };
 
-//LOGOUt
+
+// LOGOUT
 
 export const logOut = async (req, res, next) => {
-  try{
-  const { refreshToken } = req.cookies;
-  if (refreshToken) {
-    const user = await User.findOne({ refreshToken });
-    if (user) {
-      user.refreshToken = null;
-      await user.save();
+  try {
+    const { refreshToken } = req.cookies;
+
+    if (refreshToken) {
+      const user = await User.findOne({ refreshToken });
+      if (user) {
+        user.refreshToken = null;
+        await user.save();
+      }
     }
+
+    res.clearCookie('refreshToken');
+    return res.json({ success: true, message: 'Logged out successfully' });
+  } catch (error) {
+    next(error);
   }
-  res.clearCookie('refreshToken');
-  res.json({ message: 'Logged out' });
-}catch(error){
-  next(error);
-}
 };

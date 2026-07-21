@@ -8,13 +8,19 @@ import { requireVerified } from '../middlewares/authMiddleware.js';
 
 import { isAdmin }        from '../middlewares/adminMiddleware.js';
 
+import {preventDuplicatePayment} from '../middlewares/idempotencyMiddleware.js';
+
+import validate from '../validation/validate.js';
+
+import {initializePaymentSchema, refundPaymentSchema} from '../validation/paymentValidation.js';
+
 const paymentRoutes = express.Router();
 
 // Webhook: raw body — must be registered BEFORE express.json() in app.js
 
 paymentRoutes.post('/webhook',paystackWebhook);
 
-paymentRoutes.post('/initialize',authMiddleware,requireVerified ,initializePayment);
+paymentRoutes.post('/initialize',authMiddleware, requireVerified, preventDuplicatePayment, validate (initializePaymentSchema), initializePayment );
 
 paymentRoutes.get('/verify/:reference',authMiddleware, verifyPayment);
 

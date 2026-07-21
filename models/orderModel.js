@@ -105,6 +105,11 @@ const orderSchema = new mongoose.Schema(
       default: null
     },
 
+    paymentInitializedAt:{
+      type: Date,
+      default: null
+    },
+
     paidAt:  {
       type: Date, 
       default: null

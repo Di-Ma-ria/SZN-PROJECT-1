@@ -1,6 +1,6 @@
 import express from 'express';
 
-import {placeOrder, getMyOrders, getSingleOrder, getAllOrders, updateOrderStatus, cancelOrder, getSaleAnalytics} from '../controllers/orderController.js';
+import {placeOrder, getMyOrders, getSingleOrder, getAllOrders, updateOrderStatus, cancelOrder, getSalesAnalytics} from '../controllers/orderController.js';
 
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
@@ -12,17 +12,19 @@ import validate from '../validation/validate.js';
 
 import { placeOrderSchema, updateOrderStatusSchema,cancelOrderSchema } from '../validation/orderValidation.js';
 
+import { requireProfileComplete } from '../middlewares/authMiddleware.js';
+
 const orderRoutes = express.Router();
 
 orderRoutes.get('/',authMiddleware, isAdmin, getAllOrders);
 
-orderRoutes.get('/analytics',authMiddleware, isAdmin, getSaleAnalytics);
+orderRoutes.get('/analytics',authMiddleware, isAdmin, getSalesAnalytics);
 
 orderRoutes.get('/my-orders',authMiddleware, getMyOrders);
 
 // Customer routes
 
-orderRoutes.post('/',authMiddleware,requireVerified,validate(placeOrderSchema) ,placeOrder);
+orderRoutes.post('/',authMiddleware,requireVerified, requireProfileComplete, validate(placeOrderSchema), placeOrder);
 
 orderRoutes.get('/:id',authMiddleware, getSingleOrder);
 
