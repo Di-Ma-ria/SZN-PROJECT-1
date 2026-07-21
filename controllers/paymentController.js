@@ -41,13 +41,50 @@ export const initializePayment = async (req, res, next) => {
       });
     }
 
+//checks if payment already initialized and prevent multiple paystack charges.
+
+    if(order.paymentReference && order.paymentStatus ==='unpaid') {
+
+//verify if the existing reference is still valid on paystack.
+      try{
+        const existingResponse = await axios.get(
+          `https://api.paystack.co/transaction/verify/${order.paymentReference}`,
+{headers: { Authorization: `Bearer ${PAYSTACK_SECRET}`}}
+        );
+        const existingStatus = existingResponse.data.data.status;
+
+        //if payment i spending or processing return existing link
+        if(existingStatus === 'pending' || existingStatus == 'ongoing') {
+          return res.status(200).json ({
+            success: true,
+            message: 'Payment already initialized. Please complete your existing payment.',
+            data: {
+              reference: order.paymentReference,
+              paymentUrl: `https://checkout.paystack.com/${order.paymentReference}`,
+              orderId: order._id,
+            amount: order.totalAmount,
+          },
+        });
+        }
+
+//If previous payment failed or abandoned allow new initialization to fall through to create new payment.
+
+} catch (verifyError){
+  console.log('Previous reference invalid, creating new payment');
+}
+    }
+
+ // generate a fixed reference based on orderId only and not Date.now()
+
+ const reference = `order_${order._id}`;
+
     const response = await axios.post(
       'https://api.paystack.co/transaction/initialize',
       {
         email:     order.customer.email,
         amount:    Math.round(order.totalAmount * 100), // Paystack uses kobo
         currency:  'NGN',
-        reference: `order_${order.id}_${Date.now()}`,
+        reference,
         metadata: {
           orderId:      order.id.toString(),
           customerId:   req.user.id.toString(),
@@ -61,7 +98,13 @@ export const initializePayment = async (req, res, next) => {
       }
     );
 
-    const { authorization_url, reference, access_code } = response.data.data;
+    const { authorization_url, access_code } = response.data.data;
+
+    // saves reference to order
+    await Order.findByIdAndUpdate(orderId, {
+      paymentReference: reference,
+      paymentInitializedAt: new Date(),
+    });
 
     return res.status(200).json({
       success: true,

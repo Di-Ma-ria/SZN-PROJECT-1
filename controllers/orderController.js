@@ -1,418 +1,480 @@
-import { Order} from '../models/orderModel.js';
-
-import {Inventory} from '../models/inventoryModel.js';
-
-import {Coupon} from '../models/couponModel.js';
-
-import {User} from '../models/userModel.js';
-
+import { Order }     from '../models/orderModel.js';
+import { Inventory } from '../models/inventoryModel.js';
+import { Coupon }    from '../models/couponModel.js';
+import { Product }   from '../models/productModel.js';
 import { sendTemplateEmail } from '../utils/sendEmail.js';
 
-import { Product } from '../models/productModel.js';
 
+// Atomic inventory deduction.
 
-// internal: deduct inventory
-const deductInventory = async(items) => {
-  for(const item of items) {
-    const record = await Inventory.findOne({product: item.product});
+const deductInventory = async (items) => {
+  const deductedItems = [];
 
-    if(!record || record.quantity < item.quantity) {
-      throw new Error(`Insufficient stock for: ${item.name}`);
+  for (const item of items) {
+    // Atomic — only deducts if enough stock exists, if two people try at same time only one succeeds
+    const record = await Inventory.findOneAndUpdate(
+      {
+        product:  item.product,
+        quantity: { $gte: item.quantity },
+      },
+      {
+        $inc: { quantity: -item.quantity }, 
+      },
+      { new: true }
+    );
+
+    // If null — stock ran out, someone else got the last item
+    if (!record) {
+      // Restore items already deducted in this loop
+      if (deductedItems.length > 0) {
+        await restoreInventory(deductedItems);
+      }
+      throw new Error(
+        `Sorry! "${item.name}" just went out of stock...`
+      );
     }
-    record.quantity -= item.quantity;
-    await record.save();
+
+    deductedItems.push(item);
   }
 };
 
-// Internal : restore inventory (on cancellation)
+// Restore inventory on cancellation 
 const restoreInventory = async (items) => {
-  for(const item of items) {
-    await Inventory.findOneAndUpdate({
-      product: item.product},
-      {$inc: {quantity: item.quantity } }
+  for (const item of items) {
+    await Inventory.findOneAndUpdate(
+      { product: item.product },
+      { $inc: { quantity: item.quantity } }
     );
   }
 };
 
-// Place order
-export const placeOrder = async (req, res, next) => {
-  try{
-    const {items, shippingAddress, couponCode, paymentMethod } = req.body;
 
-    if(!items || items.length === 0) {
+// PLACE ORDER
+export const placeOrder = async (req, res, next) => {
+  try {
+    const { items, shippingAddress, couponCode, paymentMethod } = req.body;
+
+    if (!items || items.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Order must have at least one item'
+        message: 'Order must have at least one item',
       });
     }
-    
-    //Guard: Seller cannot order thir own products
+
+    //Guard: seller cannot order their own products
     for (const item of items) {
       const product = await Product.findById(item.product).select('seller');
-      if(product && product.seller.toString()=== req.user.id.toString()) {
+      if (product && product.seller.toString() === req.user._id.toString()) {
         return res.status(403).json({
-          success:false,
-          message:`You cannot purchase your own product: "${item.name}"`,
+          success: false,
+          message: `You cannot purchase your own product: "${item.name}"`,
         });
       }
     }
 
-    //GUARD: re-validate item price against our current product prices
+    // Re-validate prices and stock before ordering
     const priceChangedItems = [];
 
-    for(const item of items) {
-      const product = await Product.findById(item.product).select('basePrice discountPercentage status name');
+    for (const item of items) {
+      const product = await Product.findById(item.product)
+        .select('basePrice discountPercentage status name');
 
-      if(!product || product.status !=='active') {
+      if (!product || product.status !== 'active') {
         return res.status(400).json({
-          success:false,
-          message:`"${item.name}" is no longer available`,
+          success: false,
+          message: `"${item.name}" is no longer available`,
         });
       }
 
-      //calculate current effective price (apply discount if set)
       const currentPrice =
-      product.discountPercentage >0
-      ? product.basePrice * (1- product.discountPercentage/100)
-      : product.basePrice;
+        product.discountPercentage > 0
+          ? product.basePrice * (1 - product.discountPercentage / 100)
+          : product.basePrice;
 
       const priceDiff = Math.abs(currentPrice - item.price);
-      //allow a small floating-point tolerance(1 kobo)
-      if(priceDiff >0.01) {
+      if (priceDiff > 0.01) {
         priceChangedItems.push({
-          name: item.name,
-          oldprice: item.price,
-          newPrice:Number(currentPrice.toFixed(2)),
+          name:     item.name,
+          oldPrice: item.price,
+          newPrice: Number(currentPrice.toFixed(2)),
         });
       }
     }
 
-    if(priceChangedItems.length >0) {
+    if (priceChangedItems.length > 0) {
       return res.status(409).json({
-        success:false,
-        message:'Some item prices have changed since you added them to your cart. Please review your cart.',
+        success: false,
+        message: 'Some item prices have changed. Please review your cart.',
         priceChangedItems,
       });
     }
 
-    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    // Stock check before atomic deduction, gives friendly message early, before payment attempt.
 
-    //handle coupon
+    for (const item of items) {
+      const inventory = await Inventory.findOne({ product: item.product });
+      if (!inventory || inventory.quantity < item.quantity) {
+        return res.status(400).json({
+          success: false,
+          message: `Sorry! "${item.name}" only has ${inventory?.quantity || 0} left in stock.`,
+        });
+      }
+    }
+
+    const subtotal = items.reduce(
+      (sum, item) => sum + item.price * item.quantity, 0
+    );
+
+    // ── Handle coupon ─────────────────────────────────────────
     let couponDiscount = 0;
-    let appliedCoupon = null;
+    let appliedCoupon  = null;
 
-    if(couponCode) {
-      appliedCoupon = await Coupon.findOne({ code: couponCode.toUpperCase(), isActive: true});
-
-      if(appliedCoupon && new Date() < appliedCoupon.expiresAt && appliedCoupon.usageCount < appliedCoupon.maxUsage && subtotal >= appliedCoupon.minOrderAmount && !appliedCoupon.usedBy.includes(req.user._id)
-){
-  couponDiscount = appliedCoupon.discountType === 'percentage'
-  ?(subtotal * appliedCoupon.discountValue) / 100 : appliedCoupon.discountValue;
-
-couponDiscount = Math.min(couponDiscount, subtotal);
-  }
-}
-
-const totalAmount = subtotal - couponDiscount;
-
-
-// Deduct inventory (throws if stock is insufficient)
-
-await deductInventory(items);
-
-// create order
-const order = await Order.create({
-  customer: req.user.id,
-  items,
-  shippingAddress,
-  subtotal,
-  couponCode:  appliedCoupon ? appliedCoupon.code : null,
-  couponDiscount,
-  totalAmount,
-  paymentMethod: paymentMethod || 'paystack',
-});
-
-//update coupon usage
-if(appliedCoupon){
-  appliedCoupon.usageCount += 1;
-  appliedCoupon.usedBy.push(req.user._id);
-  await appliedCoupon.save();
-}
-
-
-// send confirmation email
-
-await sendTemplateEmail(req.user.email, 'orderConfirmation', {
-  name: req.user.name,
-  order,
-});
-
-return res.status(201).json({
-  success: true,
-  message: 'Order placed successfully',
-  order,
-  });
-} catch (error) {
-  next(error);
-  }
-};
-
-//get my orders (customer)
-export const getMyOrders = async (req, res, next) => {
-  try{
-    const {status, page = 1, limit =10 } = req.query;
-    const filter = { customer: req.user.id };
-    if(status) filter.status =status;
-
-    const skip = (page -1) * limit;
-    const orders = await Order.find(filter)
-      .populate('items.product', 'name images')
-      .skip(skip)
-      .limit(Number(limit))
-      .sort({createdAt: -1});
-
-const total = await Order.countDocuments(filter);
-
-return res.json({
-  success: true,
-  page: Number(page),
-  totalPage: Math.ceil(total / limit),
-  total,
-  orders,
-  });
-} catch (error) {
-  next(error);
-  }
-};
-
-// get single order
-
-export const getSingleOrder = async (req, res, next) => {
-  try{
-    const order = await Order.findById(req.params.id)
-      .populate('customer', 'name email phone')
-      .populate('items.product', 'name images');
-
-  if(!order) {
-    return res.status(404).json({
-      success: false,
-      message: 'Order not found'
-    });
-      }
-
-      //Customer can only see their own orders
-      if(req.user.role === 'customer' && (!order.customer || order.customer.id.toString() !== req.user.id.toString())
-      ){
-    return res.status(403).json({
-      success: false, 
-      message: 'Access denied'
-    });
-      }
-
-      return res.json({
-        success: true, order
+    if (couponCode) {
+      appliedCoupon = await Coupon.findOne({
+        code:     couponCode.toUpperCase(),
+        isActive: true,
       });
-      } catch (error){
-        next(error);
+
+      if (!appliedCoupon) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid or inactive coupon code',
+        });
       }
-  
-};
 
+      if (new Date() > appliedCoupon.expiresAt) {
+        return res.status(400).json({
+          success: false,
+          message: 'This coupon has expired',
+        });
+      }
 
-//get all orders by admin
+      if (appliedCoupon.usageCount >= appliedCoupon.maxUsage) {
+        return res.status(400).json({
+          success: false,
+          message: 'This coupon has reached its usage limit',
+        });
+      }
 
-export const getAllOrders = async (req, res, next) =>  {
-  try{
-    const { status, paymentStatus, page = 1, limit = 20 }= req.query;
-    const filter = {};
-    if(status)    filter.status   = status;
-    if(paymentStatus)  filter.paymentStatus = paymentStatus;
+      if (subtotal < appliedCoupon.minOrderAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Minimum order amount for this coupon is ₦${appliedCoupon.minOrderAmount.toLocaleString()}`,
+        });
+      }
 
-const skip = (page - 1) * limit;
-const orders = await Order.find(filter)
-    .populate('customer', 'name email')
-    .populate('items.product', 'name')
-    .skip(skip)
-    .limit(Number(limit))
-    .sort({createdAt: -1 });
+      if (appliedCoupon.usedBy.includes(req.user._id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'You have already used this coupon',
+        });
+      }
 
-const total = await Order.countDocuments(filter);
+      couponDiscount =
+        appliedCoupon.discountType === 'percentage'
+          ? (subtotal * appliedCoupon.discountValue) / 100
+          : appliedCoupon.discountValue;
 
-return res.json({
-  success: true,
-  page: Number(page),
-  totalPages: Math.ceil(total / limit),
-  total,
-  orders,
-  });
-} catch (error) {
-  next(error);
-  }
-};
+      couponDiscount = Math.min(couponDiscount, subtotal);
+    }
 
+    const totalAmount = subtotal - couponDiscount;
 
-//update order status by admin
-
-export const updateOrderStatus = async (req, res, next) => {
-  try{
-    const {status} = req.body;
-
-    const order = await Order.findById(req.params.id).populate('customer', 'name email');
-    if(!order){
-      return res.status(404).json({
+    // Atomic inventory deduction, prevents race condition. if only ONE person gets last item.
+    // Throws error if stock runs out between check and deduction
+    try {
+      await deductInventory(items);
+    } catch (stockError) {
+      return res.status(400).json({
         success: false,
-        message: 'Order not found'
+        message: stockError.message,
       });
-   }
+    }
 
-
-   if(order.status === 'cancelled') {
-    return res.status(400).json({
-      success: false,
-      message: 'Cannot update a cancelled order'
+    // Create order AFTER successful inventory deduction
+    const order = await Order.create({
+      customer:       req.user._id,
+      items,
+      shippingAddress,
+      subtotal,
+      couponCode:     appliedCoupon ? appliedCoupon.code : null,
+      couponDiscount,
+      totalAmount,
+      paymentMethod:  paymentMethod || 'paystack',
     });
-   }
 
-   order.status = status;
-   await order.save();
+    // Update coupon usage
+    if (appliedCoupon) {
+      appliedCoupon.usageCount += 1;
+      appliedCoupon.usedBy.push(req.user._id);
+      await appliedCoupon.save();
+    }
 
+    // Respond immediately
+    res.status(201).json({
+      success: true,
+      message: 'Order placed successfully',
+      order,
+    });
 
-   //notify customer
-   await sendTemplateEmail(order.customer.email, 'orderStatusUpdate',{
-    name: order.customer.name,
-    order,
-   });
+    // Send confirmation email in background
+    sendTemplateEmail(req.user.email, 'orderConfirmation', {
+      name:  req.user.name,
+      order,
+    }).catch(err => console.error('Order email failed:', err.message));
 
-   return res.json({
-    success: true,
-    message: `Order status updated to "${status}"`,
-    order,
-   });
-  } catch (error){
+  } catch (error) {
     next(error);
   }
 };
 
+// GET MY ORDERS — customer views their own orders
+export const getMyOrders = async (req, res, next) => {
+  try {
+    const { status, page = 1, limit = 10 } = req.query;
+    const filter = { customer: req.user._id };
+    if (status) filter.status = status;
 
-//cancel order
+    const skip = (Number(page) - 1) * Number(limit);
 
-export  const cancelOrder = async (req, res, next) => {
-  try{
-    const {reason} = req.body;
+    const [orders, total] = await Promise.all([
+      Order.find(filter)
+        .populate('items.product', 'name images')
+        .skip(skip)
+        .limit(Number(limit))
+        .sort({ createdAt: -1 }),
+      Order.countDocuments(filter),
+    ]);
 
-    const order = await Order.findById(req.params.id).populate('customer', 'name email');
-    if(!order){
+    return res.status(200).json({
+      success: true,
+      page:   Number(page),
+      pages:  Math.ceil(total / Number(limit)),
+      total,
+      orders,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET SINGLE ORDER
+export const getSingleOrder = async (req, res, next) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('customer', 'name email phone')
+      .populate('items.product', 'name images');
+
+    if (!order) {
       return res.status(404).json({
         success: false,
-        message: 'Order not found'
+        message: 'Order not found',
       });
     }
 
-    // customer can only cancel their own order
+    // Customer can only see their own orders
+    if (
+      req.user.role === 'customer' &&
+      order.customer._id.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied',
+      });
+    }
 
-  if(
-    req.user.role === 'customer' && (!order.customer || order.customer.id.toString() !== req.user.id.toString())
-  ){
-    return res.status(403).json({
-      success: false,
-      message: 'Access denied'
-    });
+    return res.status(200).json({ success: true, order });
+  } catch (error) {
+    next(error);
   }
+};
 
-  if(['shipped', 'delivered'].includes(order.status)) {
-    return res.status(400).json({
-      success: false,
-      message: 'Cannot cancel an order that has already shipped or been delivered',
-    });
-  }
+// CANCEL ORDER
+export const cancelOrder = async (req, res, next) => {
+  try {
+    const { reason } = req.body;
 
-  if(order.status === 'cancelled') {
-    return res.status(400).json({
-      success:false,
-      message:'This order is already cancelled',
-    });
-  }
+    const order = await Order.findById(req.params.id)
+      .populate('customer', 'name email');
 
-  //restore stock
-  await restoreInventory(order.items);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found',
+      });
+    }
 
-  order.status  ='cancelled';
-  order.cancelledAt  = new Date();
-  order.cancellationReason  = reason || null;
+    // Customer can only cancel their own orders
+    if (
+      req.user.role === 'customer' &&
+      order.customer._id.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied',
+      });
+    }
 
-  // if order was already paid, flag it for admin refund
-  if(order.paymentStatus === 'paid') {
-    order.paymentStatus = 'refund_pending';  //signals admin to process refund
-  }
+    if (['shipped', 'delivered'].includes(order.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot cancel an order that has already shipped or been delivered',
+      });
+    }
 
-  await order.save();
+    if (order.status === 'cancelled') {
+      return res.status(400).json({
+        success: false,
+        message: 'Order is already cancelled',
+      });
+    }
 
-  if (order.customer?.email) {
-    await sendTemplateEmail(order.customer.email, 'orderCancelled', {
-      name: order.customer.name || 'Customer',
+    // Restore inventory when order is cancelled
+    await restoreInventory(order.items);
+
+    order.status             = 'cancelled';
+    order.cancelledAt        = new Date();
+    order.cancellationReason = reason || null;
+    await order.save();
+
+    //Respond immediately
+    res.status(200).json({
+      success: true,
+      message: 'Order cancelled successfully',
       order,
     });
-  } else {
-    console.warn(`Order ${order._id} was cancelled, but no customer email was available for notification.`);
-  }
 
-  return res.json({
-    success: true,
-    message: order.paymentStatus === 'refund_pending'
-    ? 'Order cancelled. Since you already paid, a refund will be processed by our team shortly.'
-    : 'Order cancelled successfully',
-    order,
-  });
+    // Send cancellation email in background
+    sendTemplateEmail(order.customer.email, 'orderCancelled', {
+      name:  order.customer.name,
+      order,
+    }).catch(err => console.error('Cancel email failed:', err.message));
+
   } catch (error) {
     next(error);
   }
 };
 
 
+// GET ALL ORDERS — admin views all orders
 
-// Sale analytics (admin dashboard)
+export const getAllOrders = async (req, res, next) => {
+  try {
+    const { status, paymentStatus, page = 1, limit = 20 } = req.query;
+    const filter = {};
 
-export const getSaleAnalytics = async (req, res, next) => {
-  try{
+    if (status)        filter.status        = status;
+    if (paymentStatus) filter.paymentStatus = paymentStatus;
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const [orders, total] = await Promise.all([
+      Order.find(filter)
+        .populate('customer', 'name email')
+        .populate('items.product', 'name')
+        .skip(skip)
+        .limit(Number(limit))
+        .sort({ createdAt: -1 }),
+      Order.countDocuments(filter),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      page:   Number(page),
+      pages:  Math.ceil(total / Number(limit)),
+      total,
+      orders,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// UPDATE ORDER STATUS — admin updates order status
+
+export const updateOrderStatus = async (req, res, next) => {
+  try {
+    const { status } = req.body;
+
+    const order = await Order.findById(req.params.id)
+      .populate('customer', 'name email');
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found',
+      });
+    }
+
+    if (order.status === 'cancelled') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot update a cancelled order',
+      });
+    }
+
+    order.status = status;
+    await order.save();
+
+    //  Respond immediately
+    res.status(200).json({
+      success: true,
+      message: `Order status updated to "${status}"`,
+      order,
+    });
+
+    // Send status update email in background
+    sendTemplateEmail(order.customer.email, 'orderStatusUpdate', {
+      name:  order.customer.name,
+      order,
+    }).catch(err => console.error('Status email failed:', err.message));
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+// SALES ANALYTICS — admin dashboard stats
+
+export const getSalesAnalytics = async (req, res, next) => {
+  try {
     const totalOrders = await Order.countDocuments();
 
     const revenueResult = await Order.aggregate([
-      {$match: {paymentStatus: 'paid' }},
-      {$group: {_id: null, total: {$sum: '$totalAmount'}}},
+      { $match: { paymentStatus: 'paid' } },
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
     ]);
-const totalRevenue = revenueResult[0]?.total || 0;
+    const totalRevenue = revenueResult[0]?.total || 0;
 
-const orderByStatus = await Order.aggregate([
-  {$group: {_id: '$status', count: {$sum: 1 }}},
-]);
+    const ordersByStatus = await Order.aggregate([
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]);
 
+    // Revenue per month — last 6 months
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-//Revenue per month-6months
+    const revenueByMonth = await Order.aggregate([
+      { $match: { paymentStatus: 'paid', createdAt: { $gte: sixMonthsAgo } } },
+      {
+        $group: {
+          _id:     { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },
+          revenue: { $sum: '$totalAmount' },
+          orders:  { $sum: 1 },
+        },
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } },
+    ]);
 
-const sixMonthsAgo = new Date();
-sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() -6);
-
-const revenueByMonth = await Order.aggregate([
-  {$match: { paymentStatus: 'paid', createdAt: {$gte: sixMonthsAgo }}},
-  {
-    $group: {
-      _id: { year: {$year: '$createdAt'}, month: {$month: '$createdAt'}},
-      revenue: {$sum: '$totalAmount'},
-      orders: {$sum: 1},
-    },
-  },
-  {$sort: {'_id.year': 1, '_id.month': 1 }},
-]);
-
-return res.json({
-  success: true,
-  data: {
-    totalOrders,
-    totalRevenue,
-    orderByStatus,
-    revenueByMonth,
-  },
-});
+    return res.status(200).json({
+      success: true,
+      data: {
+        totalOrders,
+        totalRevenue,
+        ordersByStatus,
+        revenueByMonth,
+      },
+    });
   } catch (error) {
     next(error);
   }

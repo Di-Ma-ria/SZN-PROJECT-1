@@ -79,7 +79,7 @@ export const authMiddleware = async (req, res, next) => {
 };
 
 
-//Use it in any route that requires a verified email(orders and payment)
+//Use it in any route that requires a verified(orders and payment)
 
 export const requireVerified = (req, res, next)=>{
   if(!req.user.isVerified) {
@@ -90,3 +90,20 @@ export const requireVerified = (req, res, next)=>{
   }
   next();
 };
+
+
+
+// REQUIRE PROFILE COMPLETE — use on routes that need address
+
+export const requireProfileComplete = (req, res, next) => {
+  if (!req.user.profileComplete) {
+    return res.status(403).json({
+      success:         false,
+      profileComplete: false,
+      message:         'Please complete your profile before continuing. Add your phone number and delivery address.',
+      nextStep:        'Go to PATCH /api/auth/update to complete your profile.',
+    });
+  }
+  next();
+};
+ 

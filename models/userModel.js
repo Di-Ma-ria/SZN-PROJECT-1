@@ -31,6 +31,35 @@ const userSchema = new mongoose.Schema({
     default: null
   },
 
+
+   address: {
+      street:  {
+         type: String,
+         trim: true,
+        },
+
+      city:    {
+         type: String,
+         trim: true
+        },
+
+      state:   { 
+        type: String,
+        trim: true,
+       },
+
+      country: {
+         type: String,
+         trim: true, 
+        },
+    },
+ 
+    profileComplete: {
+      type:    Boolean,
+      default: false,
+    },
+
+
   profileImage: {
     type: String,
     default: null
@@ -44,24 +73,24 @@ const userSchema = new mongoose.Schema({
 
   // ALL ROLES ADDRESS
 
-  address: {
-    street: {
-      type: String,
-      trim: true,
-    },
-    city: {
-      type: String,
-      trim: true,
-    },
-    state: {
-      type: String,
-      trim: true,
-    },
-    country: {
-      type: String,
-      trim: true,
-    },
-  },
+  // address: {
+  //   street: {
+  //     type: String,
+  //     trim: true,
+  //   },
+  //   city: {
+  //     type: String,
+  //     trim: true,
+  //   },
+  //   state: {
+  //     type: String,
+  //     trim: true,
+  //   },
+  //   country: {
+  //     type: String,
+  //     trim: true,
+  //   },
+  // },
 
   // ALL ROLE ACCOUNT STATUS 
 

@@ -1,10 +1,9 @@
 import { Inventory } from '../models/inventoryModel.js';
-
 import { Product }   from '../models/productModel.js';
 
-// ADMIN ENDPOINTS — Admin / Superadmin Only
 
-// GET ALL INVENTORY
+//GET ALL INVENTORY
+
 export const getAllInventory = async (req, res, next) => {
   try {
     const { page = 1, limit = 20, lowStock } = req.query;
@@ -20,16 +19,16 @@ export const getAllInventory = async (req, res, next) => {
         .populate('product', 'name price images status')
         .skip(skip)
         .limit(Number(limit))
-        .sort({ quantity: 1 }), // lowest stock first
+        .sort({ quantity: 1 }),
       Inventory.countDocuments(filter),
     ]);
 
     return res.status(200).json({
       success: true,
       total,
-      page:  Number(page),
-      pages: Math.ceil(total / Number(limit)),
-      data:  inventory,
+      page:   Number(page),
+      pages:  Math.ceil(total / Number(limit)),
+      data:   inventory,
     });
   } catch (error) {
     next(error);
@@ -37,6 +36,7 @@ export const getAllInventory = async (req, res, next) => {
 };
 
 // GET SINGLE PRODUCT INVENTORY
+
 export const getProductInventory = async (req, res, next) => {
   try {
     const record = await Inventory.findOne({ product: req.params.productId })
@@ -56,6 +56,7 @@ export const getProductInventory = async (req, res, next) => {
 };
 
 // RESTOCK PRODUCT — admin adds stock
+
 export const restockProduct = async (req, res, next) => {
   try {
     const { quantity, lowStockThreshold } = req.body;
@@ -68,6 +69,7 @@ export const restockProduct = async (req, res, next) => {
     }
 
     // Find or create inventory record for this product
+
     let record = await Inventory.findOne({ product: req.params.productId });
     if (!record) {
       record = new Inventory({ product: req.params.productId, quantity: 0 });
@@ -75,6 +77,7 @@ export const restockProduct = async (req, res, next) => {
 
     record.quantity        += Number(quantity);
     record.lastRestockedAt  = new Date();
+
     if (lowStockThreshold !== undefined) {
       record.lowStockThreshold = lowStockThreshold;
     }
@@ -92,27 +95,37 @@ export const restockProduct = async (req, res, next) => {
 };
 
 // DEDUCT STOCK — admin manual adjustment
+
 export const deductStock = async (req, res, next) => {
   try {
     const { quantity } = req.body;
 
-    const record = await Inventory.findOne({ product: req.params.productId });
-    if (!record) {
-      return res.status(404).json({
-        success: false,
-        message: 'Inventory record not found',
-      });
-    }
+    //  Atomic deduction — prevents going negative
+    const record = await Inventory.findOneAndUpdate(
+      {
+        product:  req.params.productId,
+        quantity: { $gte: quantity },
+      },
+      {
+        $inc: { quantity: -Number(quantity) },
+      },
+      { new: true }
+    );
 
-    if (record.quantity < quantity) {
+    if (!record) {
+      // Either record not found or insufficient stock
+      const existing = await Inventory.findOne({ product: req.params.productId });
+      if (!existing) {
+        return res.status(404).json({
+          success: false,
+          message: 'Inventory record not found',
+        });
+      }
       return res.status(400).json({
         success: false,
-        message: 'Insufficient stock to deduct',
+        message: `Insufficient stock. Only ${existing.quantity} available.`,
       });
     }
-
-    record.quantity -= Number(quantity);
-    await record.save();
 
     return res.status(200).json({
       success: true,
@@ -125,6 +138,7 @@ export const deductStock = async (req, res, next) => {
 };
 
 // GET LOW STOCK ALERTS
+
 export const getLowStockAlerts = async (req, res, next) => {
   try {
     const items = await Inventory.find({
@@ -133,16 +147,16 @@ export const getLowStockAlerts = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      count: items.length,
-      data:  items,
+      count:   items.length,
+      data:    items,
     });
   } catch (error) {
     next(error);
   }
 };
 
-
 // GET LOW STOCK PRODUCTS — returns product details for low stock items
+
 export const getLowStockProducts = async (req, res, next) => {
   try {
     const lowStockItems = await Inventory.find({
@@ -159,16 +173,16 @@ export const getLowStockProducts = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      count: products.length,
-      data:  products,
+      count:   products.length,
+      data:    products,
     });
   } catch (error) {
-    next(error); // 
+    next(error);
   }
 };
 
-
 // UPDATE PRODUCT STOCK — seller or admin updates base product stock
+
 export const updateStock = async (req, res, next) => {
   try {
     const { stock } = req.body;
@@ -210,12 +224,12 @@ export const updateStock = async (req, res, next) => {
       data:    updated,
     });
   } catch (error) {
-    next(error); 
+    next(error);
   }
 };
 
-
 // UPDATE VARIANT STOCK — seller or admin updates a specific variant stock
+
 export const updateVariantStock = async (req, res, next) => {
   try {
     const { stock } = req.body;
@@ -265,6 +279,6 @@ export const updateVariantStock = async (req, res, next) => {
       data:    product,
     });
   } catch (error) {
-    next(error); 
+    next(error);
   }
 };
