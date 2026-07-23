@@ -1,5 +1,5 @@
 
-import nodemailer from 'nodemailer';
+import axios from "axios";
 
 //Base HTML wrapper
 const wrap = (content) => `
@@ -186,32 +186,66 @@ const createTransporter = () => {
 };
 
 // Core send function
+// export const sendEmail = async ({ to, subject, html }) => {
+//  try {
+//   console.log('=== EMAIL DEBUG ===');
+//     console.log('HOST:', process.env.EMAIL_HOST);
+//     console.log('USER:', process.env.EMAIL_USER);
+//     console.log('PASS:', process.env.EMAIL_PASS ? 'loaded' : 'MISSING');
+//     console.log('==================');
+
+
+
+//     const transporter = createTransporter();
+
+//     await transporter.sendMail({
+//       from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM}>`,
+//       to,
+//       subject,
+//       html,
+//     });
+
+//     console.log(`📧 Email sent to ${to}`);
+//   } catch (error) {
+//     console.error('Email failed to send:', error.message);
+//     console.error('EMAIL_HOST:', process.env.EMAIL_HOST);
+//     console.error('EMAIL_USER:', process.env.EMAIL_USER);
+//   }
+// };
+
+// Core send function — sends via Brevo's HTTP API (port 443) instead of SMTP, so it works even on hosts (like Render's free tier) that block outbound SMTP ports 25/465/587.
 export const sendEmail = async ({ to, subject, html }) => {
- try {
-  console.log('=== EMAIL DEBUG ===');
-    console.log('HOST:', process.env.EMAIL_HOST);
-    console.log('USER:', process.env.EMAIL_USER);
-    console.log('PASS:', process.env.EMAIL_PASS ? 'loaded' : 'MISSING');
-    console.log('==================');
-
-
-
-    const transporter = createTransporter();
-
-    await transporter.sendMail({
-      from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM}>`,
-      to,
-      subject,
-      html,
-    });
+  try {
+    console.log('API key loaded:', process.env.BREVO_API_KEY ? 'yes, length ' + process.env.BREVO_API_KEY.length : 'MISSING');
+    await axios.post(
+      'https://api.brevo.com/v3/smtp/email',
+      {
+        sender: {
+          name:  process.env.EMAIL_FROM_NAME,
+          email: process.env.EMAIL_FROM,
+        },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
+      },
+      {
+        headers: {
+          'api-key':      process.env.BREVO_API_KEY,
+          'Content-Type': 'application/json',
+          'Accept':       'application/json',
+        },
+      }
+    );
 
     console.log(`📧 Email sent to ${to}`);
   } catch (error) {
-    console.error('Email failed to send:', error.message);
-    console.error('EMAIL_HOST:', process.env.EMAIL_HOST);
-    console.error('EMAIL_USER:', process.env.EMAIL_USER);
+    console.error(
+      'Email failed to send:',
+      error.response?.data?.message || error.message
+    );
   }
 };
+
 
 //  Template helper
 export const sendTemplateEmail = async (to, templateName, data) => {

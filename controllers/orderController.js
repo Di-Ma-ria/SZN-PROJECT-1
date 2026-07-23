@@ -191,6 +191,32 @@ export const placeOrder = async (req, res, next) => {
       });
     }
 
+   // Atomic coupon claim — same idea as inventory: check-and-reserve in one DB operation, so two people racing for the last use of a limited coupon can't both succeed. If two orders race, only one findOneAndUpdate matches.
+    if (appliedCoupon) {
+      const claimedCoupon = await Coupon.findOneAndUpdate(
+        {
+          _id:         appliedCoupon._id,
+          usageCount:  { $lt: appliedCoupon.maxUsage },
+          usedBy:      { $ne: req.user._id },
+        },
+        {
+          $inc:  { usageCount: 1 },
+          $push: { usedBy: req.user._id },
+        },
+        { new: true }
+      );
+
+      if (!claimedCoupon) {
+        // Someone else claimed the last use (or reused it) between our earlier
+        // check and now — roll back the inventory we already deducted.
+        await restoreInventory(items);
+        return res.status(400).json({
+          success: false,
+          message: 'This coupon just reached its usage limit or was already used',
+        });
+      }
+    }
+
     // Create order AFTER successful inventory deduction
     const order = await Order.create({
       customer:       req.user._id,
