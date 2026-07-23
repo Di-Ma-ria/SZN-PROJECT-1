@@ -216,7 +216,6 @@ const createTransporter = () => {
 // Core send function — sends via Brevo's HTTP API (port 443) instead of SMTP, so it works even on hosts (like Render's free tier) that block outbound SMTP ports 25/465/587.
 export const sendEmail = async ({ to, subject, html }) => {
   try {
-    console.log('API key loaded:', process.env.BREVO_API_KEY ? 'yes, length ' + process.env.BREVO_API_KEY.length : 'MISSING');
     await axios.post(
       'https://api.brevo.com/v3/smtp/email',
       {
