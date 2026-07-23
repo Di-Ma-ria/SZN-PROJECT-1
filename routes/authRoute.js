@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { register, logIn, getProfile, updateProfile, changePassword, requestAccountDeletion, deleteMyAccount, applyForSeller, applyForAdmin, resendOtp, verifyOtp, sendOtp, resetPassword, forgotPassword, logOut } from '../controllers/authController.js';
+import { register, logIn, getProfile, updateProfile, changePassword, requestAccountDeletion, deleteMyAccount, applyForSeller, applyForAdmin, resendOtp, verifyOtp, sendOtp, resetPassword, forgotPassword, logOut, refreshAccessToken } from '../controllers/authController.js';
 
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
@@ -43,6 +43,8 @@ authRoutes.delete('/delete-my-account',authMiddleware, validate(confirmDeleteSch
 authRoutes.post('/apply-seller', authMiddleware, validate(applyForSellerSchema), applyForSeller);
 
 authRoutes.post('/apply-admin',  authMiddleware, applyForAdmin);
+
+authRoutes.post(`/refresh`, refreshAccessToken)
 
 authRoutes.post(`/logout`,authMiddleware ,logOut)
 
