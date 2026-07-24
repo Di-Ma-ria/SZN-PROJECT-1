@@ -2,6 +2,7 @@ import {User} from '../models/userModel.js';
 
 import {sendTemplateEmail} from '../utils/sendEmail.js';
 
+import { escapeRegex } from '../validation/validate.js';
 
 export const getAllUsers = async (req, res, next) => {
   try{
@@ -20,8 +21,8 @@ export const getAllUsers = async (req, res, next) => {
     }
     if(search) {
       filter.$or = [ 
-        {name: {$regex: search, $options: 'i'}},
-        {email: {$regex: search, $options: 'i'}},
+        {name: {$regex:escapeRegex(search), $options: 'i'}},
+        {email: {$regex:escapeRegex(search), $options: 'i'}},
 
       ];
     }

@@ -135,41 +135,35 @@ export const logIn = async (req, res, next) => {
       });
     }
 
-    // Check if account is locked
-    if (user.lockUntil && user.lockUntil > Date.now()) {
-      const minutesLeft = Math.ceil((user.lockUntil - Date.now()) / 60000);
-      return res.status(423).json({
-        success: false,
-        message: `Account locked. Try again in ${minutesLeft} minute(s).`,
-      });
-    }
+   // Check if account is locked
+if (user.isLocked()) {
+  const minutesLeft = Math.ceil((user.lockUntil - Date.now()) / 60000);
+  return res.status(423).json({
+    success: false,
+    message: `Account locked. Try again in ${minutesLeft} minute(s).`,
+  });
+}
 
-    const isMatch = await user.comparePassword(password);
+const isMatch = await user.comparePassword(password);
 
-    if (!isMatch) {
-      user.loginAttempts = (user.loginAttempts || 0) + 1;
+if (!isMatch) {
+  await user.incrementLoginAttempts();
 
-      // Lock account after 5 failed attempts
-      if (user.loginAttempts >= 5) {
-        user.lockUntil    = new Date(Date.now() + 15 * 60 * 1000);
-        user.loginAttempts = 0;
-        await user.save();
-        return res.status(423).json({
-          success: false,
-          message: 'Too many failed attempts. Account locked for 15 minutes.',
-        });
-      }
+  if (user.isLocked()) {
+    return res.status(423).json({
+      success: false,
+      message: 'Too many failed attempts. Account locked for 15 minutes.',
+    });
+  }
 
-      await user.save();
-      return res.status(401).json({
-        success: false,
-        message: `Invalid email or password. ${5 - user.loginAttempts} attempt(s) remaining.`,
-      });
-    }
+  return res.status(401).json({
+    success: false,
+    message: `Invalid email or password. ${5 - user.loginAttempts} attempt(s) remaining.`,
+  });
+}
 
-    // Reset login attempts on success
-    user.loginAttempts = 0;
-    user.lockUntil     = null;
+// Reset login attempts on success
+await user.resetLoginAttempts();
 
     const accessToken  = await generateAccessToken({ id: user._id, role: user.role });
     const refreshToken = await generateRefreshToken({ id: user._id });
