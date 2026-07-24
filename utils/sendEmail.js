@@ -1,5 +1,5 @@
 
-import nodemailer from 'nodemailer';
+import axios from "axios";
 
 //Base HTML wrapper
 const wrap = (content) => `
@@ -195,6 +195,7 @@ const createTransporter = () => {
 //     console.log('==================');
 
 
+//     const transporter = createTransporter();
 
 //     const transporter = createTransporter();
 
@@ -213,8 +214,7 @@ const createTransporter = () => {
 //   }
 // };
 
-
-// Core send function — sends via Brevo's HTTP API (port 443) instead of SMTP.
+// Core send function — sends via Brevo's HTTP API (port 443) instead of SMTP, so it works even on hosts (like Render's free tier) that block outbound SMTP ports 25/465/587.
 export const sendEmail = async ({ to, subject, html }) => {
   try {
     await axios.post(
@@ -245,6 +245,7 @@ export const sendEmail = async ({ to, subject, html }) => {
     );
   }
 };
+
 
 //  Template helper
 export const sendTemplateEmail = async (to, templateName, data) => {

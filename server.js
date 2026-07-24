@@ -7,6 +7,22 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
+// Temporary debug
+// console.log('=== ENV CHECK ===');
+// console.log('EMAIL_HOST:', process.env.EMAIL_HOST);
+// console.log('EMAIL_USER:', process.env.EMAIL_USER);
+// console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'loaded' : 'MISSING');
+// console.log('=================');
+
+
+import { initCloudinary } from './config/cloudinary.js';
+initCloudinary();
+
+
+
+
+// rest of the imports 
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
