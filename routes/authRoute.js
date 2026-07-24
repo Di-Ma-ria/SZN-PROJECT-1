@@ -12,9 +12,13 @@ const authRoutes = express.Router();
 
 // PUBLIC 
 
+authRoutes.get('/location', getUserLocation);
+
 authRoutes.post('/register', validate(registerSchema), register);
 
 authRoutes.post('/login',    validate(loginSchema),    logIn);
+
+authRoutes.post('/refresh', refreshAccessToken);
 
 authRoutes.post('/forgot-password',validate(forgotPasswordSchema),forgotPassword);
 
