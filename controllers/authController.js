@@ -777,39 +777,6 @@ export const applyForAdmin = async (req, res, next) => {
   }
 };
 
-// REFRESH ACCESS TOKEN
-
-export const refreshAccessToken = async (req, res, next) => {
-  try {
-    const { refreshToken } = req.cookies;
-
-    if (!refreshToken) {
-      return res.status(401).json({ success: false, message: 'No refresh token provided' });
-    }
-
-    const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
-
-    let decoded;
-    try {
-      decoded = jwt.verify(refreshToken, secret);
-    } catch (err) {
-      return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
-    }
-
-    const user = await User.findById(decoded.id);
-
-    if (!user || user.refreshToken !== refreshToken) {
-      return res.status(401).json({ success: false, message: 'Refresh token no longer valid' });
-    }
-
-    const newAccessToken = await generateAccessToken({ id: user._id, role: user.role });
-
-    return res.status(200).json({ success: true, accessToken: newAccessToken });
-  } catch (error) {
-    next(error);
-  }
-};
-
 // LOGOUT
 
 export const logOut = async (req, res, next) => {
