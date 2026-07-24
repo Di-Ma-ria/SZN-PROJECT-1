@@ -76,7 +76,7 @@ export const initializePayment = async (req, res, next) => {
 
  // generate a fixed reference based on orderId only and not Date.now()
 
- const reference = `order_${order._id}`;
+ const reference = `order_${order.id}_${Date.now()}`;
 
     const response = await axios.post(
       'https://api.paystack.co/transaction/initialize',
