@@ -8,6 +8,11 @@ const cartItemSchema = new mongoose.Schema(
       required: true,
     },
 
+    name: {
+      typr: String,
+      required: true,
+    },
+
     quantity:{
       type: Number,
       required: true,

@@ -85,14 +85,14 @@ credentials: true,
 
 app.use(cookieParser());
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 50,
-  message: {
-    success: false,
-    message: 'Too many attempts. Try in 15 minutes',
-  },
-});
+// const authLimiter = rateLimit({
+//   windowMs: 15 * 60 * 1000,
+//   max: 50,
+//   message: {
+//     success: false,
+//     message: 'Too many attempts. Try in 15 minutes',
+//   },
+// });
 
 // Rate limiting
 const limiter = rateLimit({
@@ -104,7 +104,7 @@ const limiter = rateLimit({
   },
 });
 
-app.use('/api/auth', authLimiter);
+// app.use('/api/auth', authLimiter);
 app.use('/api', limiter);
 
 // ROUTES

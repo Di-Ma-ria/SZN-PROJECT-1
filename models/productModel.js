@@ -99,7 +99,7 @@ const productSchema = new mongoose.Schema({
     specs:{
         type:Map,
         of:String,
-    },     //{RAM: "8gb", Battery:"5000mAh"}
+    },     //{RAM: "8GB", Battery:"5000mAh"}
 
     isFeatured:{
         type:Boolean,
@@ -130,9 +130,15 @@ productSchema.index({
     brand:'text'
 });
 
+productSchema.index({seller:1});
+productSchema.index({
+    category:1,
+    status:1
+});
 
 
-// create
+
+// slug on create
 
 productSchema.pre('save', async function () {
   if (!this.isModified('name')) return;
@@ -156,9 +162,12 @@ productSchema.pre('save', async function () {
 
 productSchema.pre('findOneAndUpdate', async function () {
   const update = this.getUpdate();
-  if (!update.name) return; 
 
-    let baseSlug = slugify(update.name, { lower: true, strict: true });
+
+  const name = update?.$set?.name ?? update?.name;
+  if (!name) return; 
+
+    let baseSlug = slugify(name, { lower: true, strict: true });
     let slug = baseSlug;
     let counter = 1;
 
@@ -169,7 +178,8 @@ productSchema.pre('findOneAndUpdate', async function () {
       slug = `${baseSlug}-${counter}`;
       counter++;
     }
-    update.slug = slug;
+    update.$set = update.$set || {};
+    update.$set.slug = slug;
   
 });
 
