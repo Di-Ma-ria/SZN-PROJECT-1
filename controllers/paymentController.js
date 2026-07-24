@@ -209,20 +209,19 @@ export const paystackWebhook = async (req, res, next) => {
     const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 
     const crypto = await import('crypto');
-    const hash   = crypto.default
-      .createHmac('sha512', PAYSTACK_SECRET)
-      .update(JSON.stringify(req.body))
-      .digest('hex');
+  const hash = crypto.createHmac('sha512', PAYSTACK_SECRET)
+  .update(req.body) // req.body is already the raw Buffer — use it as-is
+  .digest('hex');
 
-    // Verify request is genuinely from Paystack
-    if (hash !== req.headers['x-paystack-signature']) {
-      return res.status(401).json({
+if (hash !== req.headers['x-paystack-signature']) { 
+   return res.status(401).json({
         success: false,
         message: 'Invalid webhook signature',
       });
-    }
+}
 
-    const { event, data } = req.body;
+// only parse it into JSON *after* the signature check passes
+const { event, data } = JSON.parse(req.body);
 
     // Only handle successful payments
     if (event === 'charge.success') {

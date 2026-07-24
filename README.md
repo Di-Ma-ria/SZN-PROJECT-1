@@ -198,7 +198,7 @@ All protected emdpoints require a bearer token in the Authorization header. Acce
 
 ## Image Uploads
 
-Product images endpoints accept multipart/form-data with the field name images. Up to 20 images per request,max 5MB each. Accepted formats:JPEG, PNG, WEBP.
+Product images endpoints accept multipart/form-data with the field name images. Up to 13 images per request,max 5MB each. Accepted formats:JPEG, PNG, WEBP.
 
 ## License
 

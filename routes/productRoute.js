@@ -20,7 +20,7 @@ import {
   // Seller
 
 createProduct, getMyProducts, getMyProductStats, getProductAnalytics, updateProduct, addProductImages,
-  removeProductImage, deleteProduct, updateProductStock,updateVariantStock,
+  removeProductImage, deleteProduct,updateVariantStock,
 
   // Admin
 
@@ -97,7 +97,6 @@ ProductRoutes.delete('/:id', authMiddleware, isSeller, deleteProduct);
 
 //  Stock Update Routes
 
-ProductRoutes.patch('/:id/stock', authMiddleware, isSeller, validate(updateStockSchema), updateProductStock);
 
 ProductRoutes.patch('/:id/variants/:variantId/stock', authMiddleware, isSeller, validate(updateVariantStockSchema), updateVariantStock);
 

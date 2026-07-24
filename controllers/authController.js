@@ -1,7 +1,5 @@
 import jwt from 'jsonwebtoken';
 
-import jwt from 'jsonwebtoken';
-
 import { User } from '../models/userModel.js';
 
 import { OTP }  from '../models/otpModel.js';
@@ -137,41 +135,35 @@ export const logIn = async (req, res, next) => {
       });
     }
 
-    // Check if account is locked
-    if (user.lockUntil && user.lockUntil > Date.now()) {
-      const minutesLeft = Math.ceil((user.lockUntil - Date.now()) / 60000);
-      return res.status(423).json({
-        success: false,
-        message: `Account locked. Try again in ${minutesLeft} minute(s).`,
-      });
-    }
+   // Check if account is locked
+if (user.isLocked()) {
+  const minutesLeft = Math.ceil((user.lockUntil - Date.now()) / 60000);
+  return res.status(423).json({
+    success: false,
+    message: `Account locked. Try again in ${minutesLeft} minute(s).`,
+  });
+}
 
-    const isMatch = await user.comparePassword(password);
+const isMatch = await user.comparePassword(password);
 
-    if (!isMatch) {
-      user.loginAttempts = (user.loginAttempts || 0) + 1;
+if (!isMatch) {
+  await user.incrementLoginAttempts();
 
-      // Lock account after 5 failed attempts
-      if (user.loginAttempts >= 5) {
-        user.lockUntil    = new Date(Date.now() + 15 * 60 * 1000);
-        user.loginAttempts = 0;
-        await user.save();
-        return res.status(423).json({
-          success: false,
-          message: 'Too many failed attempts. Account locked for 15 minutes.',
-        });
-      }
+  if (user.isLocked()) {
+    return res.status(423).json({
+      success: false,
+      message: 'Too many failed attempts. Account locked for 15 minutes.',
+    });
+  }
 
-      await user.save();
-      return res.status(401).json({
-        success: false,
-        message: `Invalid email or password. ${5 - user.loginAttempts} attempt(s) remaining.`,
-      });
-    }
+  return res.status(401).json({
+    success: false,
+    message: `Invalid email or password. ${5 - user.loginAttempts} attempt(s) remaining.`,
+  });
+}
 
-    // Reset login attempts on success
-    user.loginAttempts = 0;
-    user.lockUntil     = null;
+// Reset login attempts on success
+await user.resetLoginAttempts();
 
     const accessToken  = await generateAccessToken({ id: user._id, role: user.role });
     const refreshToken = await generateRefreshToken({ id: user._id });
@@ -774,39 +766,6 @@ export const applyForAdmin = async (req, res, next) => {
       success: true,
       message: 'Admin application submitted. You will be notified once reviewed.',
     });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// REFRESH ACCESS TOKEN
-
-export const refreshAccessToken = async (req, res, next) => {
-  try {
-    const { refreshToken } = req.cookies;
-
-    if (!refreshToken) {
-      return res.status(401).json({ success: false, message: 'No refresh token provided' });
-    }
-
-    const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
-
-    let decoded;
-    try {
-      decoded = jwt.verify(refreshToken, secret);
-    } catch (err) {
-      return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
-    }
-
-    const user = await User.findById(decoded.id);
-
-    if (!user || user.refreshToken !== refreshToken) {
-      return res.status(401).json({ success: false, message: 'Refresh token no longer valid' });
-    }
-
-    const newAccessToken = await generateAccessToken({ id: user._id, role: user.role });
-
-    return res.status(200).json({ success: true, accessToken: newAccessToken });
   } catch (error) {
     next(error);
   }

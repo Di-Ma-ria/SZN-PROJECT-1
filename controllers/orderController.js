@@ -229,13 +229,6 @@ export const placeOrder = async (req, res, next) => {
       paymentMethod:  paymentMethod || 'paystack',
     });
 
-    // Update coupon usage
-    if (appliedCoupon) {
-      appliedCoupon.usageCount += 1;
-      appliedCoupon.usedBy.push(req.user._id);
-      await appliedCoupon.save();
-    }
-
     // Respond immediately
     res.status(201).json({
       success: true,

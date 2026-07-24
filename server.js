@@ -33,7 +33,6 @@ import cookieParser from 'cookie-parser';
 import { rateLimit } from 'express-rate-limit';
 
 import ConnectDb from './config/db.js';
-import { initCloudinary } from './config/cloudinary.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
 import authRoutes from './routes/authRoute.js';
@@ -101,70 +100,30 @@ app.use(
   })
 );
 
-app.use(cookieParser());
-
-// CORS
-
-
-const allowedOrigins = [
+const allowedOrigins =[
   process.env.CLIENT_URL,
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-  'http://localhost:3000',
-  'http://localhost:9090',
+  "http://localhost:5173",
+  "http://localhost:5175",
+  "http://localhost:5174",
+  "http://localhost:3000",
+  "http://localhost:9090"
 ].filter(Boolean);
 
-app.use(
-  cors({
-    origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      callback(new Error(`Not allowed by CORS: ${origin}`));
-    },
-
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-    ],
-
-    credentials: true,
-  })
+app.use(cors({
+ origin: function (origin, callback) {
+if (!origin || allowedOrigins.includes(origin)) {
+ callback(null, true);
+} else {
+   callback(new Error("Not allowed by CORS: " + origin));
+}
+},
+methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+allowedHeaders: ["Content-Type", "Authorization"],
+credentials: true,
+})
 );
 
-
-// RATE LIMITERS
-
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 50,
-
-  standardHeaders: true,
-  legacyHeaders: false,
-
-  message: {
-    success: false,
-    message: 'Too many login attempts. Try again in 15 minutes.',
-  },
-});
-
-const otpLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-
-  standardHeaders: true,
-  legacyHeaders: false,
-
-  message: {
-    success: false,
-    message: 'Too many OTP requests. Try again in 15 minutes.',
-  },
-});
+app.use(cookieParser());
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -178,9 +137,6 @@ const apiLimiter = rateLimit({
     message: 'Too many requests. Please try again later.',
   },
 });
-
-app.use('/api/auth/otp', otpLimiter);
-app.use('/api/auth', authLimiter);
 
 // Skip limiter for Paystack webhook
 app.use('/api', (req, res, next) =>
