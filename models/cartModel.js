@@ -9,7 +9,7 @@ const cartItemSchema = new mongoose.Schema(
     },
 
     name: {
-      typr: String,
+      type: String,
       required: true,
     },
 
