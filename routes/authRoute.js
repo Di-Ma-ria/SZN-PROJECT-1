@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { register, logIn, getProfile, updateProfile, changePassword, requestAccountDeletion, deleteMyAccount, applyForSeller, applyForAdmin, resendOtp, verifyOtp, sendOtp, resetPassword, forgotPassword, logOut } from '../controllers/authController.js';
+import { register, logIn, refreshAccessToken, getProfile, updateProfile, changePassword, requestAccountDeletion, deleteMyAccount, applyForSeller, applyForAdmin, resendOtp, verifyOtp, sendOtp, resetPassword, forgotPassword, logOut, getUserLocation,  } from '../controllers/authController.js';
 
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
@@ -12,9 +12,13 @@ const authRoutes = express.Router();
 
 // PUBLIC 
 
+authRoutes.get('/location', getUserLocation);
+
 authRoutes.post('/register', validate(registerSchema), register);
 
 authRoutes.post('/login',    validate(loginSchema),    logIn);
+
+authRoutes.post('/refresh', refreshAccessToken);
 
 authRoutes.post('/forgot-password',validate(forgotPasswordSchema),forgotPassword);
 

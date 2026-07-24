@@ -1,23 +1,70 @@
-import mongoose from 'mongoose';
 
-import { Product } from '../models/productModel.js';
-
-import cloudinary from '../config/cloudinary.js';
-
-
-
-// GET ALL PRODUCTS — with filtering, pagination, sorting
-
+import mongoose            from 'mongoose';
+import { Product }         from '../models/productModel.js';
+import cloudinary          from '../config/cloudinary.js';
+import { convertFromNGN }  from '../utils/convertCurrency.js';
+ 
+// ─── Pagination guardrails ─────────────────────────────────────
+// Public/list endpoints accept a client-supplied `limit`. Without a
+// ceiling, a request like ?limit=999999 would force a full collection
+// scan/populate on every hit. Cap it here and reuse everywhere.
+const MAX_LIMIT = 100;
+const DEFAULT_LIMIT = 20;
+const clampLimit = (limit) => {
+  const n = Number(limit);
+  if (!Number.isFinite(n) || n <= 0) return DEFAULT_LIMIT;
+  return Math.min(n, MAX_LIMIT);
+};
+ 
+// ─── Internal: add currency display to products ───────────────
+const addCurrencyToProduct = async (product, currency) => {
+  if (!currency || currency === 'NGN') return product;
+ 
+  const obj        = product.toObject ? product.toObject() : product;
+  const basePrice  = obj.basePrice || 0;
+ 
+  try {
+    const converted = await convertFromNGN(basePrice, currency);
+ 
+    return {
+      ...obj,
+      displayPrice: {
+        NGN:      basePrice,
+        amount:   converted.amount,
+        currency: converted.currency,
+        symbol:   converted.formatted.replace(/[\d,\.]/g, '').trim(),
+        formatted: converted.formatted,
+      },
+    };
+  } catch (err) {
+    // Bad/unsupported currency code, rate-service failure, etc.
+    // Don't fail the whole request — just fall back to NGN pricing.
+    console.error(`Currency conversion failed for "${currency}":`, err.message);
+    return obj;
+  }
+};
+ 
+// ════════════════════════════════════════════════════════════
+// PUBLIC ENDPOINTS — No Auth Required
+// ════════════════════════════════════════════════════════════
+ 
+// GET ALL PRODUCTS — with filtering, pagination, sorting and currency
 export const getAllProducts = async (req, res, next) => {
   try {
-    const {category, brand, minPrice, maxPrice, productType,
-      sort = 'newest',
-      page = 1,
-      limit = 20,
+    const {
+      category,
+      brand,
+      minPrice,
+      maxPrice,
+      productType,
+      sort     = 'newest',
+      page     = 1,
+      limit,
+      currency = 'NGN', 
     } = req.query;
-
+ 
     const filter = { status: 'active' };
-
+ 
     if (category && mongoose.Types.ObjectId.isValid(category)) {
       filter.category = new mongoose.Types.ObjectId(category);
     }
@@ -28,7 +75,7 @@ export const getAllProducts = async (req, res, next) => {
       if (minPrice) filter.basePrice.$gte = Number(minPrice);
       if (maxPrice) filter.basePrice.$lte = Number(maxPrice);
     }
-
+ 
     const sortOptions = {
       newest:       { createdAt: -1 },
       oldest:       { createdAt: 1 },
@@ -36,76 +83,78 @@ export const getAllProducts = async (req, res, next) => {
       'price-desc': { basePrice: -1 },
       rating:       { 'ratings.average': -1 },
     };
-
-    const skip = (Number(page) - 1) * Number(limit);
-
+ 
+    const safeLimit = clampLimit(limit);
+    const skip = (Number(page) - 1) * safeLimit;
+ 
     const [products, total] = await Promise.all([
       Product.find(filter)
         .populate('seller',   'name email sellerProfile.storeName')
         .populate('category', 'name slug')
         .sort(sortOptions[sort] || sortOptions.newest)
         .skip(skip)
-        .limit(Number(limit)),
+        .limit(safeLimit),
       Product.countDocuments(filter),
     ]);
-
+ 
+    // Convert prices to requested currency
+    const data = currency !== 'NGN'
+      ? await Promise.all(products.map(p => addCurrencyToProduct(p, currency)))
+      : products;
+ 
     return res.status(200).json({
-      success: true,
+      success:  true,
       total,
-      page:  Number(page),
-      pages: Math.ceil(total / Number(limit)),
-      data:  products,
+      page:     Number(page),
+      pages:    Math.ceil(total / safeLimit),
+      currency,
+      data,
     });
   } catch (error) {
     next(error);
   }
 };
-
+ 
 // GET SINGLE PRODUCT — by ID or slug
-
 export const getSingleProduct = async (req, res, next) => {
   try {
-    const { id } = req.params;
-
+    const { id }             = req.params;
+    const { currency = 'NGN' } = req.query;
+ 
     const query = mongoose.Types.ObjectId.isValid(id)
       ? { _id: id, status: 'active' }
       : { slug: id, status: 'active' };
-
+ 
     const product = await Product.findOne(query)
       .populate('seller',   'name email sellerProfile.storeName')
       .populate('category', 'name slug');
-
+ 
     if (!product) {
       return res.status(404).json({
         success: false,
         message: 'Product not found',
       });
     }
-
-    return res.status(200).json({ success: true, data: product });
+ 
+    const data = await addCurrencyToProduct(product, currency);
+ 
+    return res.status(200).json({ success: true, currency, data });
   } catch (error) {
     next(error);
   }
 };
-
-// SEARCH PRODUCTS — full text search with filters and sorting
-
+ 
+// SEARCH PRODUCTS
 export const searchProducts = async (req, res, next) => {
   try {
     const {
-      q,
-      category,
-      brand,
-      minPrice,
-      maxPrice,
-      productType,
-      sort  = 'newest',
-      page  = 1,
-      limit = 20,
+      q, category, brand, minPrice, maxPrice,
+      productType, sort = 'newest', page = 1,
+      limit, currency = 'NGN',
     } = req.query;
-
+ 
     const filter = { status: 'active' };
-
+ 
     if (q) filter.$text = { $search: q };
     if (category && mongoose.Types.ObjectId.isValid(category)) {
       filter.category = new mongoose.Types.ObjectId(category);
@@ -117,7 +166,7 @@ export const searchProducts = async (req, res, next) => {
       if (minPrice) filter.basePrice.$gte = Number(minPrice);
       if (maxPrice) filter.basePrice.$lte = Number(maxPrice);
     }
-
+ 
     const sortOptions = {
       newest:       { createdAt: -1 },
       oldest:       { createdAt: 1 },
@@ -126,44 +175,49 @@ export const searchProducts = async (req, res, next) => {
       rating:       { 'ratings.average': -1 },
       popular:      { 'ratings.count': -1 },
     };
-
+ 
     let sortQuery = sortOptions[sort] || sortOptions.newest;
     if (q) sortQuery = { score: { $meta: 'textScore' }, ...sortQuery };
-
-    const skip = (Number(page) - 1) * Number(limit);
-
+ 
+    const safeLimit = clampLimit(limit);
+    const skip = (Number(page) - 1) * safeLimit;
+ 
     const [products, total] = await Promise.all([
       Product.find(filter)
         .populate('seller',   'name email')
         .populate('category', 'name slug')
         .sort(sortQuery)
         .skip(skip)
-        .limit(Number(limit)),
+        .limit(safeLimit),
       Product.countDocuments(filter),
     ]);
-
+ 
+    const data = currency !== 'NGN'
+      ? await Promise.all(products.map(p => addCurrencyToProduct(p, currency)))
+      : products;
+ 
     return res.status(200).json({
       success: true,
       total,
-      page:  Number(page),
-      pages: Math.ceil(total / Number(limit)),
-      data:  products,
+      page:    Number(page),
+      pages:   Math.ceil(total / safeLimit),
+      currency,
+      data,
     });
   } catch (error) {
     next(error);
   }
 };
-
-// SEARCH SUGGESTIONS — quick suggestions as user types
-
+ 
+// SEARCH SUGGESTIONS
 export const getSearchSuggestions = async (req, res, next) => {
   try {
     const query = req.query.q || '';
-
+ 
     if (!query.trim()) {
       return res.status(200).json({ success: true, data: [] });
     }
-
+ 
     const suggestions = await Product.find(
       {
         status: 'active',
@@ -176,195 +230,206 @@ export const getSearchSuggestions = async (req, res, next) => {
     )
       .limit(8)
       .sort({ createdAt: -1 });
-
+ 
     return res.status(200).json({ success: true, data: suggestions });
   } catch (error) {
     next(error);
   }
 };
-
+ 
 // GET PRODUCTS BY CATEGORY ID
-
 export const getProductsByCategory = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, sort = 'newest' } = req.query;
-
+    const { page = 1, limit, sort = 'newest', currency = 'NGN' } = req.query;
+ 
     if (!mongoose.Types.ObjectId.isValid(req.params.categoryId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid category ID',
-      });
+      return res.status(400).json({ success: false, message: 'Invalid category ID' });
     }
-
+ 
     const sortOptions = {
       newest:       { createdAt: -1 },
       'price-asc':  { basePrice: 1 },
       'price-desc': { basePrice: -1 },
       rating:       { 'ratings.average': -1 },
     };
-
+ 
     const filter = {
       category: new mongoose.Types.ObjectId(req.params.categoryId),
-      status: 'active',
+      status:   'active',
     };
-
-    const skip = (Number(page) - 1) * Number(limit);
-
+ 
+    const safeLimit = clampLimit(limit);
+    const skip = (Number(page) - 1) * safeLimit;
+ 
     const [products, total] = await Promise.all([
       Product.find(filter)
         .populate('seller',   'name email')
         .populate('category', 'name slug')
         .sort(sortOptions[sort] || sortOptions.newest)
         .skip(skip)
-        .limit(Number(limit)),
+        .limit(safeLimit),
       Product.countDocuments(filter),
     ]);
-
+ 
+    const data = currency !== 'NGN'
+      ? await Promise.all(products.map(p => addCurrencyToProduct(p, currency)))
+      : products;
+ 
     return res.status(200).json({
-      success: true,
-      total,
-      page:  Number(page),
-      pages: Math.ceil(total / Number(limit)),
-      data:  products,
+      success: true, total, currency,
+      page:    Number(page),
+      pages:   Math.ceil(total / safeLimit),
+      data,
     });
   } catch (error) {
     next(error);
   }
 };
-
+ 
 // GET PRODUCTS BY CATEGORY SLUG
-
 export const getProductsByCategorySlug = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, sort = 'newest' } = req.query;
-
+    const { page = 1, limit, sort = 'newest', currency = 'NGN' } = req.query;
+ 
     const category = await mongoose.connection
       .collection('categories')
       .findOne({ slug: req.params.slug });
-
+ 
     if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: 'Category not found',
-      });
+      return res.status(404).json({ success: false, message: 'Category not found' });
     }
-
+ 
     const sortOptions = {
       newest:       { createdAt: -1 },
       'price-asc':  { basePrice: 1 },
       'price-desc': { basePrice: -1 },
       rating:       { 'ratings.average': -1 },
     };
-
-    const skip   = (Number(page) - 1) * Number(limit);
+ 
+    const safeLimit = clampLimit(limit);
+    const skip   = (Number(page) - 1) * safeLimit;
     const filter = { category: category._id, status: 'active' };
-
+ 
     const [products, total] = await Promise.all([
       Product.find(filter)
         .populate('seller',   'name email')
         .populate('category', 'name slug')
         .sort(sortOptions[sort] || sortOptions.newest)
         .skip(skip)
-        .limit(Number(limit)),
+        .limit(safeLimit),
       Product.countDocuments(filter),
     ]);
-
+ 
+    const data = currency !== 'NGN'
+      ? await Promise.all(products.map(p => addCurrencyToProduct(p, currency)))
+      : products;
+ 
     return res.status(200).json({
-      success: true,
-      total,
-      page:  Number(page),
-      pages: Math.ceil(total / Number(limit)),
-      data:  products,
+      success: true, total, currency,
+      page:    Number(page),
+      pages:   Math.ceil(total / safeLimit),
+      data,
     });
   } catch (error) {
     next(error);
   }
 };
-
+ 
 // GET PRODUCTS BY BRAND
-
 export const getProductsByBrand = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, sort = 'newest' } = req.query;
-
+    const { page = 1, limit, sort = 'newest', currency = 'NGN' } = req.query;
+ 
     const sortOptions = {
       newest:       { createdAt: -1 },
       'price-asc':  { basePrice: 1 },
       'price-desc': { basePrice: -1 },
       rating:       { 'ratings.average': -1 },
     };
-
+ 
     const filter = {
       brand:  { $regex: req.params.brand, $options: 'i' },
       status: 'active',
     };
-
-    const skip = (Number(page) - 1) * Number(limit);
-
+ 
+    const safeLimit = clampLimit(limit);
+    const skip = (Number(page) - 1) * safeLimit;
+ 
     const [products, total] = await Promise.all([
       Product.find(filter)
         .populate('seller',   'name email')
         .populate('category', 'name slug')
         .sort(sortOptions[sort] || sortOptions.newest)
         .skip(skip)
-        .limit(Number(limit)),
+        .limit(safeLimit),
       Product.countDocuments(filter),
     ]);
-
+ 
+    const data = currency !== 'NGN'
+      ? await Promise.all(products.map(p => addCurrencyToProduct(p, currency)))
+      : products;
+ 
     return res.status(200).json({
-      success: true,
-      total,
-      page:  Number(page),
-      pages: Math.ceil(total / Number(limit)),
-      data:  products,
+      success: true, total, currency,
+      page:    Number(page),
+      pages:   Math.ceil(total / safeLimit),
+      data,
     });
   } catch (error) {
     next(error);
   }
 };
-
+ 
 // GET FEATURED PRODUCTS
-
 export const getFeaturedProducts = async (req, res, next) => {
   try {
-    const { limit = 10 } = req.query;
-
+    const { limit, currency = 'NGN' } = req.query;
+    const safeLimit = clampLimit(limit);
+ 
     const products = await Product.find({ status: 'active', isFeatured: true })
       .populate('seller',   'name email')
       .populate('category', 'name slug')
-      .limit(Number(limit))
+      .limit(safeLimit)
       .sort({ createdAt: -1 });
-
-    return res.status(200).json({ success: true, data: products });
+ 
+    const data = currency !== 'NGN'
+      ? await Promise.all(products.map(p => addCurrencyToProduct(p, currency)))
+      : products;
+ 
+    return res.status(200).json({ success: true, currency, data });
   } catch (error) {
     next(error);
   }
 };
-
+ 
 // GET NEW ARRIVALS
-
 export const getNewArrivals = async (req, res, next) => {
   try {
-    const { limit = 10 } = req.query;
-
+    const { limit, currency = 'NGN' } = req.query;
+    const safeLimit = clampLimit(limit);
+ 
     const products = await Product.find({ status: 'active' })
       .populate('seller',   'name email')
       .populate('category', 'name slug')
       .sort({ createdAt: -1 })
-      .limit(Number(limit));
-
-    return res.status(200).json({ success: true, data: products });
+      .limit(safeLimit);
+ 
+    const data = currency !== 'NGN'
+      ? await Promise.all(products.map(p => addCurrencyToProduct(p, currency)))
+      : products;
+ 
+    return res.status(200).json({ success: true, currency, data });
   } catch (error) {
     next(error);
   }
 };
-
-// GET DEALS — products with a discount
-
+ 
+// GET DEALS
 export const getDeals = async (req, res, next) => {
   try {
-    const { limit = 10 } = req.query;
-
+    const { limit, currency = 'NGN' } = req.query;
+    const safeLimit = clampLimit(limit);
+ 
     const products = await Product.find({
       status:             'active',
       discountPercentage: { $gt: 0 },
@@ -372,26 +437,28 @@ export const getDeals = async (req, res, next) => {
       .populate('seller',   'name email')
       .populate('category', 'name slug')
       .sort({ discountPercentage: -1 })
-      .limit(Number(limit));
-
-    return res.status(200).json({ success: true, data: products });
+      .limit(safeLimit);
+ 
+    const data = currency !== 'NGN'
+      ? await Promise.all(products.map(p => addCurrencyToProduct(p, currency)))
+      : products;
+ 
+    return res.status(200).json({ success: true, currency, data });
   } catch (error) {
     next(error);
   }
 };
-
-// GET RELATED PRODUCTS — same category, excluding current product
-
+ 
+// GET RELATED PRODUCTS
 export const getRelatedProducts = async (req, res, next) => {
   try {
+    const { currency = 'NGN' } = req.query;
+ 
     const product = await Product.findById(req.params.id);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found',
-      });
+      return res.status(404).json({ success: false, message: 'Product not found' });
     }
-
+ 
     const related = await Product.find({
       category: product.category,
       _id:      { $ne: product._id },
@@ -401,84 +468,87 @@ export const getRelatedProducts = async (req, res, next) => {
       .populate('category', 'name slug')
       .limit(10)
       .sort({ 'ratings.average': -1 });
-
-    return res.status(200).json({ success: true, data: related });
+ 
+    const data = currency !== 'NGN'
+      ? await Promise.all(related.map(p => addCurrencyToProduct(p, currency)))
+      : related;
+ 
+    return res.status(200).json({ success: true, currency, data });
   } catch (error) {
     next(error);
   }
 };
-
-// COMPARE PRODUCTS — side by side comparison of 2 to 4 products
-
+ 
+// COMPARE PRODUCTS
 export const compareProducts = async (req, res, next) => {
   try {
-    const { productIds } = req.body;
-
+    const { productIds }       = req.body;
+    const { currency = 'NGN' } = req.query;
+ 
     if (!Array.isArray(productIds) || productIds.length < 2 || productIds.length > 4) {
       return res.status(400).json({
         success: false,
         message: 'Provide between 2 and 4 product IDs to compare',
       });
     }
-
-    const invalidIds = productIds.filter(
-      (id) => !mongoose.Types.ObjectId.isValid(id)
-    );
+ 
+    const invalidIds = productIds.filter(id => !mongoose.Types.ObjectId.isValid(id));
     if (invalidIds.length > 0) {
       return res.status(400).json({
         success: false,
         message: 'One or more product IDs are invalid',
       });
     }
-
+ 
     const products = await Product.find({
       _id:    { $in: productIds },
       status: 'active',
     })
       .populate('category', 'name slug')
       .populate('seller',   'name email');
-
+ 
     if (products.length !== productIds.length) {
       return res.status(404).json({
         success: false,
         message: 'One or more products not found',
       });
     }
-
-    return res.status(200).json({ success: true, data: products });
+ 
+    const data = currency !== 'NGN'
+      ? await Promise.all(products.map(p => addCurrencyToProduct(p, currency)))
+      : products;
+ 
+    return res.status(200).json({ success: true, currency, data });
   } catch (error) {
     next(error);
   }
 };
-
-
-// CREATE PRODUCT
+ 
+ 
+// SELLER ENDPOINTS
+ 
 export const createProduct = async (req, res, next) => {
   try {
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
-
+ 
     const {
       seller:      _seller,
       images:      _images,
       status:      _status,
       productType: _productType,
-      specs,        // ← pull specs out separately
+      specs,
       ...productData
     } = req.body;
-
-    //Convert specs plain object to Map-compatible format
-    
+ 
     let parsedSpecs;
     if (specs) {
       if (typeof specs === 'string') {
-        // sent as JSON string
         parsedSpecs = new Map(Object.entries(JSON.parse(specs)));
       } else if (typeof specs === 'object') {
-        // sent as form-data key[value] pairs
         parsedSpecs = new Map(Object.entries(specs));
       }
     }
-
+ 
     const product = await Product.create({
       ...productData,
       seller:      req.user._id,
@@ -487,7 +557,7 @@ export const createProduct = async (req, res, next) => {
       productType: isAdmin ? (req.body.productType || 'own') : 'marketplace',
       ...(parsedSpecs && { specs: parsedSpecs }),
     });
-
+ 
     return res.status(201).json({
       success: true,
       message: 'Product created successfully',
@@ -497,44 +567,40 @@ export const createProduct = async (req, res, next) => {
     next(error);
   }
 };
-
-// GET MY PRODUCTS — seller views their own products
-
+ 
 export const getMyProducts = async (req, res, next) => {
   try {
-    const { status, page = 1, limit = 20 } = req.query;
+    const { status, page = 1, limit } = req.query;
     const filter = { seller: req.user._id };
     if (status) filter.status = status;
-
-    const skip = (Number(page) - 1) * Number(limit);
-
+ 
+    const safeLimit = clampLimit(limit);
+    const skip = (Number(page) - 1) * safeLimit;
+ 
     const [products, total] = await Promise.all([
       Product.find(filter)
         .populate('category', 'name slug')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(Number(limit)),
+        .limit(safeLimit),
       Product.countDocuments(filter),
     ]);
-
+ 
     return res.status(200).json({
-      success: true,
-      total,
-      page:  Number(page),
-      pages: Math.ceil(total / Number(limit)),
-      data:  products,
+      success: true, total,
+      page:    Number(page),
+      pages:   Math.ceil(total / safeLimit),
+      data:    products,
     });
   } catch (error) {
     next(error);
   }
 };
-
-// GET MY PRODUCT STATS — seller dashboard counts
-
+ 
 export const getMyProductStats = async (req, res, next) => {
   try {
     const sellerId = req.user._id;
-
+ 
     const [total, active, pending, rejected, archived, draft] = await Promise.all([
       Product.countDocuments({ seller: sellerId }),
       Product.countDocuments({ seller: sellerId, status: 'active' }),
@@ -543,7 +609,7 @@ export const getMyProductStats = async (req, res, next) => {
       Product.countDocuments({ seller: sellerId, status: 'archived' }),
       Product.countDocuments({ seller: sellerId, status: 'draft' }),
     ]);
-
+ 
     return res.status(200).json({
       success: true,
       data: { total, active, pending, rejected, archived, draft },
@@ -552,28 +618,19 @@ export const getMyProductStats = async (req, res, next) => {
     next(error);
   }
 };
-
-// GET PRODUCT ANALYTICS — seller or admin views product performance
-
+ 
 export const getProductAnalytics = async (req, res, next) => {
   try {
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
-
-    // Admin can view any product — seller can only view their own
-
-    const query = isAdmin
+    const query   = isAdmin
       ? { _id: req.params.id }
       : { _id: req.params.id, seller: req.user._id };
-
+ 
     const product = await Product.findOne(query);
-
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found or not authorized',
-      });
+      return res.status(404).json({ success: false, message: 'Product not found or not authorized' });
     }
-
+ 
     return res.status(200).json({
       success: true,
       data: {
@@ -592,68 +649,54 @@ export const getProductAnalytics = async (req, res, next) => {
     next(error);
   }
 };
-
-// UPDATE PRODUCT
-
+ 
 export const updateProduct = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found',
-      });
+      return res.status(404).json({ success: false, message: 'Product not found' });
     }
-
+ 
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
     const isOwner = product.seller.toString() === req.user._id.toString();
-
+ 
     if (!isAdmin && !isOwner) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to update this product',
-      });
+      return res.status(403).json({ success: false, message: 'Not authorized to update this product' });
     }
-
+ 
     if (!isAdmin && req.body.productType === 'own') {
-      return res.status(403).json({
-        success: false,
-        message: 'Sellers cannot set product type to own',
-      });
+      return res.status(403).json({ success: false, message: 'Sellers cannot set product type to own' });
     }
-
-    // Convert specs the same way
-
+ 
     const { specs, ...restBody } = req.body;
-
     let parsedSpecs;
     if (specs) {
-      if (typeof specs === 'string') {
-        parsedSpecs = new Map(Object.entries(JSON.parse(specs)));
-      } else if (typeof specs === 'object') {
-        parsedSpecs = new Map(Object.entries(specs));
-      }
+      parsedSpecs = typeof specs === 'string'
+        ? new Map(Object.entries(JSON.parse(specs)))
+        : new Map(Object.entries(specs));
     }
-
+ 
     const updatedImages =
       req.uploadedImages && req.uploadedImages.length > 0
         ? [...product.images, ...req.uploadedImages]
         : product.images;
-
+ 
     const updatedData = {
       ...restBody,
       images: updatedImages,
       ...(parsedSpecs && { specs: parsedSpecs }),
     };
-
+ 
     if (!isAdmin) updatedData.status = 'pending';
-
+ 
+    // runValidators: true — re-enabled so schema rules (enums, required
+    // fields, min/max, etc.) are still enforced on partial updates.
     const updated = await Product.findByIdAndUpdate(
       req.params.id,
       updatedData,
-      { new: true, runValidators: true }
+      { new: true, runValidators: true, context: 'query' }
     ).populate('category', 'name slug');
-
+ 
     return res.status(200).json({
       success: true,
       message: 'Product updated successfully',
@@ -663,99 +706,67 @@ export const updateProduct = async (req, res, next) => {
     next(error);
   }
 };
-
-// ADD PRODUCT IMAGES
-
+ 
 export const addProductImages = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found',
-      });
+      return res.status(404).json({ success: false, message: 'Product not found' });
     }
-
+ 
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
     const isOwner = product.seller.toString() === req.user._id.toString();
-
+ 
     if (!isAdmin && !isOwner) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized',
-      });
+      return res.status(403).json({ success: false, message: 'Not authorized' });
     }
-
+ 
     if (!req.uploadedImages || req.uploadedImages.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'No images uploaded',
-      });
+      return res.status(400).json({ success: false, message: 'No images uploaded' });
     }
-
+ 
     if (product.images.length + req.uploadedImages.length > 13) {
       return res.status(400).json({
         success: false,
         message: `Cannot add ${req.uploadedImages.length} images. Maximum is 13. You currently have ${product.images.length}.`,
       });
     }
-
+ 
     const updated = await Product.findByIdAndUpdate(
       req.params.id,
       { $push: { images: { $each: req.uploadedImages } } },
       { new: true }
     );
-
-    return res.status(200).json({
-      success: true,
-      message: 'Images added successfully',
-      data:    updated,
-    });
+ 
+    return res.status(200).json({ success: true, message: 'Images added successfully', data: updated });
   } catch (error) {
     next(error);
   }
 };
-
-// REMOVE PRODUCT IMAGE
-
+ 
 export const removeProductImage = async (req, res, next) => {
   try {
     const { imageUrl } = req.body;
-
     if (!imageUrl) {
-      return res.status(400).json({
-        success: false,
-        message: 'imageUrl is required',
-      });
+      return res.status(400).json({ success: false, message: 'imageUrl is required' });
     }
-
+ 
     const product = await Product.findById(req.params.id);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found',
-      });
+      return res.status(404).json({ success: false, message: 'Product not found' });
     }
-
+ 
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
     const isOwner = product.seller.toString() === req.user._id.toString();
-
+ 
     if (!isAdmin && !isOwner) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized',
-      });
+      return res.status(403).json({ success: false, message: 'Not authorized' });
     }
-
+ 
     if (!product.images.includes(imageUrl)) {
-      return res.status(404).json({
-        success: false,
-        message: 'Image not found on this product',
-      });
+      return res.status(404).json({ success: false, message: 'Image not found on this product' });
     }
-
-    // Delete from Cloudinary
-
+ 
     try {
       const urlParts    = imageUrl.split('/');
       const uploadIndex = urlParts.indexOf('upload');
@@ -767,47 +778,33 @@ export const removeProductImage = async (req, res, next) => {
     } catch (err) {
       console.error('Failed to delete from Cloudinary:', err.message);
     }
-
+ 
     const updated = await Product.findByIdAndUpdate(
       req.params.id,
       { $pull: { images: imageUrl } },
       { new: true }
     );
-
-    return res.status(200).json({
-      success: true,
-      message: 'Image removed successfully',
-      data:    updated,
-    });
+ 
+    return res.status(200).json({ success: true, message: 'Image removed successfully', data: updated });
   } catch (error) {
     next(error);
   }
 };
-
-// DELETE PRODUCT
-
+ 
 export const deleteProduct = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found',
-      });
+      return res.status(404).json({ success: false, message: 'Product not found' });
     }
-
+ 
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
     const isOwner = product.seller.toString() === req.user._id.toString();
-
+ 
     if (!isAdmin && !isOwner) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to delete this product',
-      });
+      return res.status(403).json({ success: false, message: 'Not authorized to delete this product' });
     }
-
-    // Delete all images from Cloudinary before deleting product
-
+ 
     for (const imageUrl of product.images) {
       try {
         const urlParts    = imageUrl.split('/');
@@ -820,171 +817,134 @@ export const deleteProduct = async (req, res, next) => {
         console.error('Failed to delete image from Cloudinary:', err.message);
       }
     }
-
+ 
     await product.deleteOne();
-
-    return res.status(200).json({
-      success: true,
-      message: 'Product deleted successfully',
-    });
+    return res.status(200).json({ success: true, message: 'Product deleted successfully' });
   } catch (error) {
     next(error);
   }
 };
-
-// UPDATE BASE PRODUCT STOCK ← NEW FUNCTION
-
+ 
 export const updateProductStock = async (req, res, next) => {
   try {
-    const product = await Product.findById(req.params.id);
-
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found',
-      });
+    const { stock } = req.body;
+    if (stock === undefined || stock < 0) {
+      return res.status(400).json({ success: false, message: 'Stock must be a non-negative number' });
     }
-
+ 
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+ 
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
     const isOwner = product.seller.toString() === req.user._id.toString();
-
+ 
     if (!isAdmin && !isOwner) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to update this product stock',
-      });
+      return res.status(403).json({ success: false, message: 'Not authorized to update this product stock' });
     }
-
-    const updated = await Product.findByIdAndUpdate(
-      req.params.id,
-      { stock: req.body.stock },
-      { new: true }
-    );
-
-    return res.status(200).json({
-      success: true,
-      message: 'Stock updated successfully',
-      data:    updated,
-    });
+ 
+    const updated = await Product.findByIdAndUpdate(req.params.id, { stock }, { new: true, runValidators: true });
+    return res.status(200).json({ success: true, message: 'Stock updated successfully', data: updated });
   } catch (error) {
     next(error);
   }
 };
-
-// UPDATE VARIANT STOCK ← NEW FUNCTION
-
+ 
 export const updateVariantStock = async (req, res, next) => {
   try {
-    const product = await Product.findById(req.params.id);
-
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found',
-      });
+    const { stock } = req.body;
+    if (stock === undefined || stock < 0) {
+      return res.status(400).json({ success: false, message: 'Stock must be a non-negative number' });
     }
-
+ 
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+ 
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
     const isOwner = product.seller.toString() === req.user._id.toString();
-
+ 
     if (!isAdmin && !isOwner) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to update this variant stock',
-      });
+      return res.status(403).json({ success: false, message: 'Not authorized to update this variant stock' });
     }
-
-    const variant = product.variants.find(
-      (v) => v._id.toString() === req.params.variantId
-    );
-
+ 
+    const variant = product.variants.find(v => v._id.toString() === req.params.variantId);
     if (!variant) {
-      return res.status(404).json({
-        success: false,
-        message: 'Variant not found',
-      });
+      return res.status(404).json({ success: false, message: 'Variant not found' });
     }
-
-    variant.stock = req.body.stock;
+ 
+    variant.stock = stock;
     await product.save();
-
-    return res.status(200).json({
-      success: true,
-      message: 'Variant stock updated successfully',
-      data:    product,
-    });
+ 
+    return res.status(200).json({ success: true, message: 'Variant stock updated successfully', data: product });
   } catch (error) {
     next(error);
   }
 };
-
-
-
-// GET ALL PRODUCTS — admin sees all statuses
-
+ 
+// ADMIN ENDPOINTS
+ 
+ 
 export const adminGetAllProducts = async (req, res, next) => {
   try {
-    const { status, productType, page = 1, limit = 20 } = req.query;
+    const { status, productType, page = 1, limit } = req.query;
     const filter = {};
-
     if (status)      filter.status      = status;
     if (productType) filter.productType = productType;
-
-    const skip = (Number(page) - 1) * Number(limit);
-
+ 
+    const safeLimit = clampLimit(limit);
+    const skip = (Number(page) - 1) * safeLimit;
+ 
     const [products, total] = await Promise.all([
       Product.find(filter)
         .populate('seller',   'name email role')
         .populate('category', 'name slug')
         .skip(skip)
-        .limit(Number(limit))
+        .limit(safeLimit)
         .sort({ createdAt: -1 }),
       Product.countDocuments(filter),
     ]);
-
+ 
     return res.status(200).json({
-      success: true,
-      total,
-      page:  Number(page),
-      pages: Math.ceil(total / Number(limit)),
-      data:  products,
+      success: true, total,
+      page:    Number(page),
+      pages:   Math.ceil(total / safeLimit),
+      data:    products,
     });
   } catch (error) {
     next(error);
   }
 };
-
-// GET PENDING PRODUCTS — waiting for admin approval
-
+ 
 export const getPendingProducts = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
-    const skip = (Number(page) - 1) * Number(limit);
-
+    const { page = 1, limit } = req.query;
+    const safeLimit = clampLimit(limit);
+    const skip = (Number(page) - 1) * safeLimit;
+ 
     const [products, total] = await Promise.all([
       Product.find({ status: 'pending' })
         .populate('seller',   'name email')
         .populate('category', 'name slug')
         .skip(skip)
-        .limit(Number(limit))
+        .limit(safeLimit)
         .sort({ createdAt: 1 }),
       Product.countDocuments({ status: 'pending' }),
     ]);
-
+ 
     return res.status(200).json({
-      success: true,
-      total,
-      page:  Number(page),
-      pages: Math.ceil(total / Number(limit)),
-      data:  products,
+      success: true, total,
+      page:    Number(page),
+      pages:   Math.ceil(total / safeLimit),
+      data:    products,
     });
   } catch (error) {
     next(error);
   }
 };
-
-// ADMIN PRODUCT STATS — platform wide overview
-
+ 
 export const adminProductStats = async (req, res, next) => {
   try {
     const [
@@ -1000,39 +960,27 @@ export const adminProductStats = async (req, res, next) => {
       Product.countDocuments({ productType: 'own' }),
       Product.countDocuments({ productType: 'marketplace' }),
     ]);
-
+ 
     return res.status(200).json({
       success: true,
-      data: {
-        total, active, pending,
-        rejected, archived, draft,
-        own, marketplace,
-      },
+      data: { total, active, pending, rejected, archived, draft, own, marketplace },
     });
   } catch (error) {
     next(error);
   }
 };
-
-// UPDATE PRODUCT STATUS — admin approves or rejects seller product
-
+ 
 export const updateProductStatus = async (req, res, next) => {
   try {
     const { status } = req.body;
-
-    const product = await Product.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
+    const product    = await Product.findByIdAndUpdate(
+      req.params.id, { status }, { new: true, runValidators: true }
     );
-
+ 
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found',
-      });
+      return res.status(404).json({ success: false, message: 'Product not found' });
     }
-
+ 
     return res.status(200).json({
       success: true,
       message: `Product ${status === 'active' ? 'approved' : status} successfully`,
@@ -1042,22 +990,17 @@ export const updateProductStatus = async (req, res, next) => {
     next(error);
   }
 };
-
-// TOGGLE FEATURED — feature or unfeature a product
-
+ 
 export const toggleFeaturedProduct = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found',
-      });
+      return res.status(404).json({ success: false, message: 'Product not found' });
     }
-
+ 
     product.isFeatured = !product.isFeatured;
     await product.save();
-
+ 
     return res.status(200).json({
       success: true,
       message: `Product is now ${product.isFeatured ? 'featured' : 'unfeatured'}`,
@@ -1067,3 +1010,4 @@ export const toggleFeaturedProduct = async (req, res, next) => {
     next(error);
   }
 };
+ 

@@ -1,4 +1,4 @@
-
+import jwt from 'jsonwebtoken';
 
 import { User } from '../models/userModel.js';
 
@@ -10,10 +10,31 @@ import { generateAccessToken, generateRefreshToken } from '../utils/generateToke
 
 import { sendTemplateEmail } from '../utils/sendEmail.js';
 
+import { getLocationFromIP } from '../utils/getLocation.js';
+
 //Internal OTP generator 
 
 const generateOtp = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
+
+const getIP = (req) =>
+  req.ip ||
+  req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1';
+
+//GET USER LOCATION FROM IP
+export const getUserLocation = async (req, res, next) => {
+  try{
+    const ip = getIP(req);
+    const location = await getLocationFromIP(ip);
+
+    return res.status(200).json({
+      success: true,
+      data: location,
+    });
+  } catch (error) {
+    next (error);
+  }
+};
 
 
 // REGISTER
@@ -36,7 +57,7 @@ export const register = async (req, res, next) => {
       name,
       email,
       password,
-      role:   'customer',
+      role:  'customer',
       profileComplete: false,
     });
 
@@ -54,6 +75,11 @@ export const register = async (req, res, next) => {
       role: user.role,
     });
 
+    //Detect location in background
+    const ip = getIP(req);
+    const location = await getLocationFromIP(ip);
+
+
     // Respond immediately with profileComplete: false.  This tells the frontend to prompt user to complete profile
     res.status(201).json({
       success:   true,
@@ -61,6 +87,7 @@ export const register = async (req, res, next) => {
       accessToken,
       profileComplete: false,
       nextStep:  'Please complete your profile by adding your phone number and delivery address.',
+      location,
       user: {
         id:       user._id,
         name:     user.name,
@@ -156,6 +183,10 @@ export const logIn = async (req, res, next) => {
       sameSite: 'strict',
       maxAge:   7 * 24 * 60 * 60 * 1000, // 7 days
     });
+    
+    //Detect user location on login
+    const ip = getIP(req);
+    const location = await getLocationFromIP(ip);
 
     return res.status(200).json({
       success:         true,
@@ -166,6 +197,7 @@ export const logIn = async (req, res, next) => {
       nextStep:        !user.profileComplete
         ? 'Please complete your profile by adding your phone and address.'
         : null,
+        location,
       user: {
         id:        user._id,
         name:      user.name,
@@ -180,6 +212,71 @@ export const logIn = async (req, res, next) => {
   }
 };
 
+
+// REFRESH ACCESS TOKEN
+
+export const refreshAccessToken = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.cookies;
+
+    if (!refreshToken) {
+      return res.status(401).json({
+        success: false,
+        message: 'Refresh token not found',
+      });
+    }
+
+    let decoded;
+
+    try {
+      decoded = jwt.verify(
+        refreshToken,
+        process.env.JWT_REFRESH_SECRET
+      );
+    } catch (err) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired refresh token',
+      });
+    }
+
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    if (user.isDeleted) {
+      return res.status(401).json({
+        success: false,
+        message: 'Account has been deleted',
+      });
+    }
+
+    if (user.refreshToken !== refreshToken) {
+      return res.status(401).json({
+        success: false,
+        message: 'Refresh token mismatch',
+      });
+    }
+
+    const accessToken = await generateAccessToken({
+      id: user._id,
+      role: user.role,
+    });
+
+    return res.status(200).json({
+      success: true,
+      accessToken,
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
 
 // GET PROFILE
 
