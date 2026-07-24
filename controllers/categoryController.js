@@ -1,5 +1,5 @@
 import {Category} from '../models/categoryModel.js';
-
+import { escapeRegex } from '../validation/validate.js';
 //(ADMIN ONLY ) Create Category
 
 export const createCategory = async (req, res, next) => {
@@ -9,7 +9,7 @@ export const createCategory = async (req, res, next) => {
 //checking if name is not already taken
 
 const existing = await Category.findOne({
-  name: {$regex:`^${name}$`, $options: 'i' },
+  name: {$regex:`^${escapeRegex(name)}$`, $options: 'i' },
 });
 if(existing) {
   return res.status(409).json({
@@ -70,7 +70,7 @@ export const getAllCategories = async (req, res, next) => {
     }
 
     if(search) {
-      filter.name = { $regex: search, $options: 'i'};
+      filter.name = { $regex:escapeRegex(search), $options: 'i'};
     }
 
     const categories = await Category.find(filter)
@@ -133,7 +133,7 @@ export const updatedCategory = async (req, res, next) => {
     //if renaming make sure new name isn't taken
     if(name && name !== category.name) {
       const existing = await Category.findOne({
-        name: {$regex: `^${name}$`, $options: 'i' },
+        name: {$regex: `^${escapeRegex(name)}$`, $options: 'i' },
         _id: { $ne: req.params.id },
       });
 

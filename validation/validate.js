@@ -7,3 +7,6 @@
 };
 
 export default validate;
+
+// Escape characters that have specific meaning in regex, so user input is treated as a literal string match instead of being compiled as a regex pattern.
+export const escapeRegex = (str = '') => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

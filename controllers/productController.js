@@ -4,6 +4,7 @@ import { Product }         from '../models/productModel.js';
 import cloudinary          from '../config/cloudinary.js';
 import { convertFromNGN }  from '../utils/convertCurrency.js';
 import { Inventory } from '../models/inventoryModel.js';
+import { escapeRegex } from '../validation/validate.js';
  
 // ─── Pagination guardrails ─────────────────────────────────────
 // Public/list endpoints accept a client-supplied `limit`. Without a
@@ -67,7 +68,7 @@ export const getAllProducts = async (req, res, next) => {
     if (category && mongoose.Types.ObjectId.isValid(category)) {
       filter.category = new mongoose.Types.ObjectId(category);
     }
-    if (brand)       filter.brand       = { $regex: brand, $options: 'i' };
+    if (brand)       filter.brand       = { $regex:escapeRegex(brand), $options: 'i' };
     if (productType) filter.productType = productType;
     if (minPrice || maxPrice) {
       filter.basePrice = {};
@@ -158,7 +159,7 @@ export const searchProducts = async (req, res, next) => {
     if (category && mongoose.Types.ObjectId.isValid(category)) {
       filter.category = new mongoose.Types.ObjectId(category);
     }
-    if (brand)       filter.brand       = { $regex: brand, $options: 'i' };
+    if (brand)       filter.brand       = { $regex:escapeRegex(brand), $options: 'i' };
     if (productType) filter.productType = productType;
     if (minPrice || maxPrice) {
       filter.basePrice = {};
@@ -221,8 +222,8 @@ export const getSearchSuggestions = async (req, res, next) => {
       {
         status: 'active',
         $or: [
-          { name:  { $regex: query, $options: 'i' } },
-          { brand: { $regex: query, $options: 'i' } },
+          { name:  { $regex:escapeRegex(query), $options: 'i' } },
+          { brand: { $regex:escapeRegex(query), $options: 'i' } },
         ],
       },
       { name: 1, brand: 1, slug: 1, images: 1, basePrice: 1 }
@@ -347,7 +348,7 @@ export const getProductsByBrand = async (req, res, next) => {
     };
  
     const filter = {
-      brand:  { $regex: req.params.brand, $options: 'i' },
+      brand:  { $regex:escapeRegex(req.params.brand), $options: 'i' },
       status: 'active',
     };
  
