@@ -20,7 +20,7 @@ import {
   // Seller
 
 createProduct, getMyProducts, getMyProductStats, getProductAnalytics, updateProduct, addProductImages,
-  removeProductImage, deleteProduct,
+  removeProductImage, deleteProduct,updateVariantStock,
 
   // Admin
 
