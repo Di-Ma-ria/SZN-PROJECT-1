@@ -3,6 +3,7 @@ import mongoose            from 'mongoose';
 import { Product }         from '../models/productModel.js';
 import cloudinary          from '../config/cloudinary.js';
 import { convertFromNGN }  from '../utils/convertCurrency.js';
+import { Inventory } from '../models/inventoryModel.js';
  
 // ─── Pagination guardrails ─────────────────────────────────────
 // Public/list endpoints accept a client-supplied `limit`. Without a
@@ -44,9 +45,7 @@ const addCurrencyToProduct = async (product, currency) => {
   }
 };
  
-// ════════════════════════════════════════════════════════════
 // PUBLIC ENDPOINTS — No Auth Required
-// ════════════════════════════════════════════════════════════
  
 // GET ALL PRODUCTS — with filtering, pagination, sorting and currency
 export const getAllProducts = async (req, res, next) => {
@@ -557,6 +556,14 @@ export const createProduct = async (req, res, next) => {
       productType: isAdmin ? (req.body.productType || 'own') : 'marketplace',
       ...(parsedSpecs && { specs: parsedSpecs }),
     });
+
+        //Give evry non-variant product an inventory record right away
+    if(!product.variants || product.variants.length===0) {
+      await Inventory.create({
+    product: product._id,
+    quantity:Number(req.body.stock) || 0,
+    });
+  }
  
     return res.status(201).json({
       success: true,
@@ -638,7 +645,7 @@ export const getProductAnalytics = async (req, res, next) => {
         name:               product.name,
         status:             product.status,
         basePrice:          product.basePrice,
-        stock:              product.stock,
+      stock:              inventoryRecord ? inventoryRecord.quantity:0,
         discountPercentage: product.discountPercentage,
         ratings:            product.ratings,
         isFeatured:         product.isFeatured,
@@ -671,9 +678,11 @@ export const updateProduct = async (req, res, next) => {
     const { specs, ...restBody } = req.body;
     let parsedSpecs;
     if (specs) {
-      parsedSpecs = typeof specs === 'string'
-        ? new Map(Object.entries(JSON.parse(specs)))
-        : new Map(Object.entries(specs));
+      if(typeof specs === 'string') {
+        parsedSpecs = new Map(Object.entries(JSON.parse(specs)));
+      } else if(typeof specs === 'object') {
+        parsedSpecs = new Map(Object.entries(specs));
+      }
     }
  
     const updatedImages =
@@ -825,32 +834,8 @@ export const deleteProduct = async (req, res, next) => {
   }
 };
  
-export const updateProductStock = async (req, res, next) => {
-  try {
-    const { stock } = req.body;
-    if (stock === undefined || stock < 0) {
-      return res.status(400).json({ success: false, message: 'Stock must be a non-negative number' });
-    }
- 
-    const product = await Product.findById(req.params.id);
-    if (!product) {
-      return res.status(404).json({ success: false, message: 'Product not found' });
-    }
- 
-    const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
-    const isOwner = product.seller.toString() === req.user._id.toString();
- 
-    if (!isAdmin && !isOwner) {
-      return res.status(403).json({ success: false, message: 'Not authorized to update this product stock' });
-    }
- 
-    const updated = await Product.findByIdAndUpdate(req.params.id, { stock }, { new: true, runValidators: true });
-    return res.status(200).json({ success: true, message: 'Stock updated successfully', data: updated });
-  } catch (error) {
-    next(error);
-  }
-};
- 
+// UPDATE VARIANT STOCK ← NEW FUNCTION
+
 export const updateVariantStock = async (req, res, next) => {
   try {
     const { stock } = req.body;

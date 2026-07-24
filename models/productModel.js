@@ -130,6 +130,11 @@ productSchema.index({
     brand:'text'
 });
 
+productSchema.index({seller:1});
+productSchema.index({
+    category:1,
+    status:1
+});
 
 
 // slug on create

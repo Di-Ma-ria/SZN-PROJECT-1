@@ -103,55 +103,14 @@ app.use(
 
 app.use(cookieParser());
 
-// CORS
-
-
-const allowedOrigins = [
-  process.env.CLIENT_URL,
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-  'http://localhost:3000',
-  'http://localhost:9090',
-].filter(Boolean);
-
-app.use(
-  cors({
-    origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      callback(new Error(`Not allowed by CORS: ${origin}`));
-    },
-
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-    ],
-
-    credentials: true,
-  })
-);
-
-
-// RATE LIMITERS
-
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 50,
-
-  standardHeaders: true,
-  legacyHeaders: false,
-
-  message: {
-    success: false,
-    message: 'Too many login attempts. Try again in 15 minutes.',
-  },
-});
+// const authLimiter = rateLimit({
+//   windowMs: 15 * 60 * 1000,
+//   max: 50,
+//   message: {
+//     success: false,
+//     message: 'Too many attempts. Try in 15 minutes',
+//   },
+// });
 
 const otpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

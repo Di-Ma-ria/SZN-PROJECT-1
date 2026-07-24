@@ -4,6 +4,8 @@ import { register, logIn, getProfile, updateProfile, changePassword, requestAcco
 
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
+import { loginLimiter, otpLimiter,registerLimiter } from '../middlewares/rateLimiters.js';
+
 import validate from '../validation/validate.js';
 
 import {registerSchema,loginSchema,updateProfileSchema,changePasswordSchema,deleteAccountSchema, confirmDeleteSchema, applyForSellerSchema, forgotPasswordSchema, resetPasswordSchema, sendOtpSchema, verifyOtpSchema} from '../validation/authValidation.js';
@@ -12,23 +14,19 @@ const authRoutes = express.Router();
 
 // PUBLIC 
 
-authRoutes.get('/location', getUserLocation);
+authRoutes.post('/register',registerLimiter ,validate(registerSchema), register);
 
-authRoutes.post('/register', validate(registerSchema), register);
+authRoutes.post('/login', loginLimiter,validate(loginSchema),    logIn);
 
-authRoutes.post('/login',    validate(loginSchema),    logIn);
-
-authRoutes.post('/refresh', refreshAccessToken);
-
-authRoutes.post('/forgot-password',validate(forgotPasswordSchema),forgotPassword);
+authRoutes.post('/forgot-password',otpLimiter,validate(forgotPasswordSchema),forgotPassword);
 
 authRoutes.post('/reset-password',validate(resetPasswordSchema), resetPassword);
 
-authRoutes.post('/otp/send',validate(sendOtpSchema),sendOtp);
+authRoutes.post('/otp/send',otpLimiter,validate(sendOtpSchema),sendOtp);
 
 authRoutes.post('/otp/verify',validate(verifyOtpSchema),verifyOtp);
 
-authRoutes.post('/otp/resend',validate(sendOtpSchema),resendOtp);
+authRoutes.post('/otp/resend',otpLimiter,validate(sendOtpSchema),resendOtp);
 
 // PROTECTED 
 
