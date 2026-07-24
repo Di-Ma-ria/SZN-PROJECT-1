@@ -21,7 +21,7 @@ categoryRoutes.get('/:id', getSingleCategory); // view one category
 
 // ADMIN ONLY 
 
-categoryRoutes.post('/', authMiddleware, authMiddleware, isAdmin, validate(createCategorySchema), createCategory);
+categoryRoutes.post('/', authMiddleware, isAdmin, validate(createCategorySchema), createCategory);
 
 categoryRoutes.patch('/:id', authMiddleware, isAdmin,  validate(updateCategorySchema), updatedCategory);
 

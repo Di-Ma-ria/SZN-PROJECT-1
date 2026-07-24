@@ -838,44 +838,32 @@ export const deleteProduct = async (req, res, next) => {
 
 export const updateVariantStock = async (req, res, next) => {
   try {
-    const product = await Product.findById(req.params.id);
-
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found',
-      });
+    const { stock } = req.body;
+    if (stock === undefined || stock < 0) {
+      return res.status(400).json({ success: false, message: 'Stock must be a non-negative number' });
     }
-
+ 
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+ 
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
     const isOwner = product.seller.toString() === req.user._id.toString();
-
+ 
     if (!isAdmin && !isOwner) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to update this variant stock',
-      });
+      return res.status(403).json({ success: false, message: 'Not authorized to update this variant stock' });
     }
-
-    const variant = product.variants.find(
-      (v) => v._id.toString() === req.params.variantId
-    );
-
+ 
+    const variant = product.variants.find(v => v._id.toString() === req.params.variantId);
     if (!variant) {
-      return res.status(404).json({
-        success: false,
-        message: 'Variant not found',
-      });
+      return res.status(404).json({ success: false, message: 'Variant not found' });
     }
-
-    variant.stock = req.body.stock;
+ 
+    variant.stock = stock;
     await product.save();
-
-    return res.status(200).json({
-      success: true,
-      message: 'Variant stock updated successfully',
-      data:    product,
-    });
+ 
+    return res.status(200).json({ success: true, message: 'Variant stock updated successfully', data: product });
   } catch (error) {
     next(error);
   }
@@ -1007,3 +995,4 @@ export const toggleFeaturedProduct = async (req, res, next) => {
     next(error);
   }
 };
+ 

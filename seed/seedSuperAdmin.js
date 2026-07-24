@@ -15,7 +15,9 @@ const seedSuperAdmin = async () => {
     console.log('Connected to database..');
 
     const existingSuperAdmin = await User.findOne({role: 'superadmin'});
-    if(!existingSuperAdmin) {
+    if(existingSuperAdmin) {
+      console.log('Superadmin already exists- skipping');
+    } else{
       await User.create({
         name: process.env.SUPERADMIN_NAME, 
         email:process.env.SUPERADMIN_EMAIL,
@@ -35,8 +37,6 @@ const seedSuperAdmin = async () => {
         },
       });
 
-      console.log('Superadmin created');
-    } else {
       console.log('Superadmin already exists -skipping');
     }
 
@@ -45,7 +45,6 @@ const seedSuperAdmin = async () => {
     console.log('Seeding completed successfully');
     console.log('=============');
     console.log(`Email:       ${process.env.SUPERADMIN_EMAIL}`);
-    console.log(`Password:    ${process.env.SUPERADMIN_PASSWORD}`);
     console.log('============');
 
 

@@ -137,7 +137,6 @@ productSchema.index({
 });
 
 
-
 // slug on create
 
 productSchema.pre('save', async function () {
