@@ -33,7 +33,6 @@ import cookieParser from 'cookie-parser';
 import { rateLimit } from 'express-rate-limit';
 
 import ConnectDb from './config/db.js';
-import { initCloudinary } from './config/cloudinary.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
 import authRoutes from './routes/authRoute.js';
